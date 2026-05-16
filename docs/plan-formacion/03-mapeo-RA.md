@@ -1,6 +1,6 @@
 # Mapeo de actividades del curso a Resultados de Aprendizaje (Anexo I)
 
-Documento de referencia para el tutor del centro (Javier Jiménez-Alfaro Hacha). Demuestra que el plan cubre todos los RA del Anexo I del convenio.
+Documento de referencia interno (tutora dual de empresa). Demuestra que el plan cubre todos los RA del Anexo I del convenio.
 
 **Convenio**: 110022372025020 · **Ciclo**: 1º DAM · **Alumnos**: Manuel Aparicio Doeste y Cecilia Serrano Martín.
 

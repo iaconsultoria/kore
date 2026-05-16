@@ -59,7 +59,7 @@ Cada vulnerabilidad encontrada va en un fichero markdown dentro de `hackeo/` del
 
 ---
 
-## Decisiones pendientes (cerrar con Javier antes de S5)
+## Decisiones pendientes (cerrar la tutora antes de S5)
 
 - [ ] ¿Premio simbólico al ganador o puramente colaborativo?
 - [ ] ¿La tutora puede meter vulns "plantadas" para que las encuentren? (recomendación: sí, 1-2 por app, anunciado por adelantado)
