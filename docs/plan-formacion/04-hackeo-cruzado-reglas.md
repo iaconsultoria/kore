@@ -47,9 +47,9 @@ Cada vulnerabilidad encontrada va en un fichero markdown dentro de `hackeo/` del
 
 ## Cierre J 18/06
 
-- Cada uno presenta sus hallazgos en 15 min al otro y a la tutora.
-- El atacado tiene derecho a réplica: explica por qué, propone mitigación.
-- Se hace una lista conjunta de "lecciones aprendidas" que va al README final.
+- Cada uno publica sus hallazgos en el hilo de chat y los enlaza con los ficheros `hackeo/VULN-XX.md` del repo `kore`. La tutora lee y comenta.
+- El atacado tiene derecho a réplica por escrito: explica por qué, propone mitigación.
+- Se redacta una lista conjunta de "lecciones aprendidas" que va al README final.
 
 ## Honor code
 
