@@ -2,7 +2,9 @@
 
 > Sistema Operativo IA para PYMEs, micropymes y autónomos.
 
-Kore es un **núcleo Django multi-tenant** sobre el que se cargan **apps modulares** que se hablan entre sí mediante MCP (Model Context Protocol) y un bus de eventos. La IA opera; el humano ordena, revisa y aprueba.
+Kore es un **núcleo Django** sobre el que se cargan **apps modulares** que se hablan entre sí mediante MCP (Model Context Protocol) y un bus de eventos. La IA opera; el humano ordena, revisa y aprueba.
+
+**Modelo de despliegue**: una instalación de Kore = un negocio (un autónomo o una pequeña empresa). El usuario se instala Kore en su máquina/servidor; abre un dashboard vacío; activa las apps que quiera. Sin multi-tenant en el código del núcleo. Para SaaS gestionado futuro: una instancia por cliente (estilo Odoo.sh, Plausible, Mattermost).
 
 ## Estado
 
@@ -27,7 +29,7 @@ Repo en construcción durante la fase formativa FFOE **18/05/2026 → 18/06/2026
 kore/
 ├── kore/                    # Proyecto Django (settings, urls, wsgi)
 ├── apps/
-│   ├── nucleo/              # Tenants, perfiles, registro de apps
+│   ├── nucleo/              # Identidad, perfiles, 3 roles fijos, registro de apps
 │   ├── calendario/          # App Cecilia
 │   └── facturas/            # App Manuel
 ├── docs/
@@ -42,9 +44,9 @@ kore/
 
 ## Convenciones
 
-- **Idioma del código**: español (funciones, clases, variables, commits). Excepciones: términos técnicos universales (`request`, `response`, `id`, `email`, `tenant`…) y dependencias externas.
+- **Idioma del código**: español (funciones, clases, variables, commits). Excepciones: términos técnicos universales (`request`, `response`, `id`, `email`…) y dependencias externas.
 - **Documentación**: español.
-- **Multi-tenant**: por subdirectorio `/e/<slug>/` (sencillo en dev, migrable a subdominio en producción).
+- **Permisos**: 3 roles fijos del núcleo (Admin / Operador / Solo lectura). Para ocultar algo a un usuario, no se le da esa app. Sin permisos de campo, sin reglas de registro, sin permisos extra/revocados por usuario (patrón anti-Odoo).
 - **Cada commit con IA**: el mensaje incluye una sección `## Revisión de IA` indicando qué se modificó respecto a lo propuesto por la IA.
 
 ## Cómo arrancar (desarrollo local)
