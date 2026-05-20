@@ -94,14 +94,13 @@ Para crear la base de datos, necesitar tener PostgreSQL instalado y funcionando.
 ```
 ## Decisiones
 ### Versiones
-- asgiref         3.11.1
-- Django          6.0.5
-- pip             26.0.1
-- psycopg         3.3.4
-- psycopg-binary  3.3.4
-- python-decouple 3.8
-- sqlparse        0.5.5
-- tzdata          2026.2
+- asgiref>=3.11.1,<3.11.2
+- Django>=5.2,<5.3
+- psycopg>=3.3.4,<3.3.5
+- psycopg-binary>=3.3.4,<3.3.5
+- python-decouple>=3.8.0.4,<3.8.05
+- sqlparse>=0.5.5,<0.5.6
+- django-environ>=0.13.0,<0.14.0
 
 ### Por qué PostgreSQL
 Se ha usado PostgreSQL ya que es de código abierto, puede gestionar numerosas conexiones simúltaneas sin bajar su rendimiento. 
