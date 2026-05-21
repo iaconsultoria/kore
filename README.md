@@ -62,6 +62,78 @@ python manage.py runserver
 ```
 
 > El fichero `requirements.txt` se generará el M 19/05 cuando se instale Django (día 2 del plan).
+## Arranque local
+1. **Clonar el repositorio**
+```bash
+   git clone https://github.com/tu-org/tu-repo.git
+   cd tu-repo
+```
+2. **Crear y activar el entorno virtual**
+```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windows(PowerShell): .venv\Scripts\activate
+```
+3. **Instalar dependencias**
+```bash
+   pip install -r requirements.txt
+```
+4. **Configurar variables de entorno**
+```bash
+   cp .env.example .env
+   # Edita .env con tus propias variables
+```
+5. **Crear la base de datos**
+Para crear la base de datos, necesitar tener PostgreSQL instalado y funcionando. En pgAdmin4: Servers > PostgresSQL16 > Databases. Click derecho sobre Databases y y pulsar en Create > Database, ahí se escribe el nombre de la base de datos.
+
+6. **Aplicar migraciones**
+```bash
+   python manage.py migrate
+```
+7. **Arrancar el servidor de desarrollo**
+```bash
+   python manage.py runserver
+   # Disponible en http://127.0.0.1:8000
+```
+## Decisiones
+### Versiones
+- asgiref>=3.8.1,<4
+- Django>=5.2,<5.3
+- psycopg>=3.1,<4
+- psycopg-binary>=3.1,<4
+- sqlparse>=0.3.1,<1
+- django-environ>=0.13.0,<0.14.0
+
+### Por qué PostgreSQL
+Se ha usado PostgreSQL ya que es de código abierto, puede gestionar numerosas conexiones simúltaneas sin bajar su rendimiento. 
+
+### Estructura de carpetas
+```
+KORE/
+├── docs/
+│   └── plan-formacion/
+│       ├── 01-plan-macro.md
+│       ├── 02-semana-1-detalle.md
+│       ├── 03-mapeo-RA.md
+│       └── 04-hackeo-cruzado.md
+├── equipo/
+│   ├── cecilia.md
+│   ├── manuel.md
+├── kore/
+│   ├── __pycache__/
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── venv/
+├── .env
+├── .env.example
+├── .gitignore
+├── db.sqlite3
+├── manage.py
+├── README.md
+└── requirements.txt
+```
 
 ## Plan de formación
 
