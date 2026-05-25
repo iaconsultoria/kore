@@ -3,6 +3,17 @@ from django.db import models
 from django.core.exceptions import ValidationError
 
 
+class Negocio(models.Model):
+    nombre = models.CharField(max_length=200)
+    identificador_fiscal = models.CharField(max_length=50)
+    pais = models.CharField(max_length=2, default="ES")
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.nombre
+
+
 class Rol(models.TextChoices):
     ADMIN = "admin", "Administrador"
     OPERADOR = "operador", "Operador"
