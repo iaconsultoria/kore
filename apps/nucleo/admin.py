@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import Perfil
-from .models import Negocio
+from .models import Perfil, Negocio
 @admin.register(Perfil)
 class PerfilAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'rol', 'cargo')
