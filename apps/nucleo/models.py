@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 class Negocio(models.Model):
     nombre = models.CharField(max_length=200)
     identificador_fiscal = models.CharField(max_length=50)
-
+    pais = models.CharField(max_length=2, default="ES")
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
