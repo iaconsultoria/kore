@@ -3,7 +3,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 
 
-
 class Negocio(models.Model):
     nombre = models.CharField(max_length=200)
 
@@ -57,18 +56,23 @@ class Negocio(models.Model):
 
         self.full_clean()
         super().save(*args, **kwargs)
+        
 
     @classmethod
     def obtener(cls):
-        instancia, _ = cls.objects.get_or_create(
-            defaults={
-                "nombre": "Mi negocio",
-                "pais": "ES",
-                "moneda": "EUR",
-                "zona_horaria": "Europe/Madrid"
-            }
+        instancia = cls.objects.first()
+        if instancia is None:
+            instancia = cls.objects.create(
+            nombre="Mi negocio",
+            pais="ES",
+            moneda="EUR",
+            zona_horaria="Europe/Madrid"
         )
-        return instancia
+        return instancia   
+
+    class Meta:
+        verbose_name = "Negocio"
+        verbose_name_plural = "Negocios"
 
     def __str__(self):
         return self.nombre
@@ -87,11 +91,9 @@ class Perfil(models.Model):
     cargo = models.CharField(max_length=100, blank=True, default="")
     actualizado_en = models.DateTimeField(auto_now=True)
 
-
     class Meta:
         verbose_name = "Perfil"
         verbose_name_plural = "Perfiles"
-
 
     def __str__(self):
         return f"Perfil de {self.usuario.username} ({self.get_rol_display()})"
