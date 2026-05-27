@@ -11,13 +11,14 @@ class LineaFacturaInline(admin.TabularInline):
 class FacturaAdmin(admin.ModelAdmin):
     list_display = ("numero_factura", "fecha_emision", "proveedor", "total")
     search_fields = ("numero_factura",)
-    list_filter = ("fecha_emision",)
+    list_filter = ("fecha_emision",) #list_filter = ("fecha_emision", "proveedor", "categoria")
     inlines = [LineaFacturaInline]
 
 
 @admin.register(Proveedor)
 class ProveedorAdmin(admin.ModelAdmin):
     list_display = ("nombre", "nif", "pais")
+    #search_fields = ("nombre", "nif")
 
 
 @admin.register(CategoriaGasto)

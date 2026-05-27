@@ -50,7 +50,7 @@ IVA_CHOICES = [
 
 
 class Factura(models.Model):
-    numero_factura = models.CharField(max_length=50)
+    numero_factura = models.CharField(max_length=50) # numero_factura = models.CharField(max_length=50, unique=True)
     fecha_emision = models.DateField()
     proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
     categoria = models.ForeignKey(
@@ -74,6 +74,7 @@ class Factura(models.Model):
     class Meta:
         verbose_name = "Factura"
         verbose_name_plural = "Facturas"
+        #ordering = ["-fecha_emision"]
 
     def __str__(self):
         return f"Factura {self.numero_factura}"
