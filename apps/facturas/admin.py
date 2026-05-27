@@ -1,24 +1,25 @@
 from django.contrib import admin
-from .models import Factura
+from .models import Factura, LineaFactura, Proveedor, CategoriaGasto
 
-# Register your models here.
+
+class LineaFacturaInline(admin.TabularInline):
+    model = LineaFactura
+    extra = 1
+
 
 @admin.register(Factura)
 class FacturaAdmin(admin.ModelAdmin):
-    list_display = (
-        "numero_factura",
-        "fecha_emision",
-        "nif_emisor",
-        "nombre_emisor",
-        "total",
-    )
+    list_display = ("numero_factura", "fecha_emision", "proveedor", "total")
+    search_fields = ("numero_factura",)
+    list_filter = ("fecha_emision",)
+    inlines = [LineaFacturaInline]
 
-    search_fields = (
-        "numero_factura",
-        "nif_emisor",
-        "nombre_emisor",
-    )
 
-    list_filter = (
-        "fecha_emision",
-    )
+@admin.register(Proveedor)
+class ProveedorAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "nif", "pais")
+
+
+@admin.register(CategoriaGasto)
+class CategoriaGastoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "deducible_iva", "cuenta_contable")
