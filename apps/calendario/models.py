@@ -1,4 +1,5 @@
 from django.db import models
+from datetime import datetime
 from django.core.exceptions import ValidationError
 
 
@@ -63,20 +64,22 @@ class Cita(models.Model):
             )
                 # Validación de solapamiento: solo si ambas citas tienen hora
         if self.hora_inicio and self.hora_fin and self.inicio and self.fin:
-            solapadas = Cita.objects.filter(
-                inicio__lte=self.fin,
-                fin__gte=self.inicio,
-                hora_inicio__lt=self.hora_fin,
-                hora_fin__gt=self.hora_inicio,
-            ).exclude(pk=self.pk)  # excluir la propia cita al editar
+            dt_inicio = datetime.combine(self.inicio, self.hora_inicio)
+            dt_fin    = datetime.combine(self.fin,    self.hora_fin)
  
-            if solapadas.exists():
-                otra = solapadas.first()
-                raise ValidationError(
-                    f"Esta cita se solapa con «{otra.titulo}» "
-                    f"({otra.inicio} {otra.hora_inicio}–{otra.hora_fin})."
-                    f"— prioridad: {otra.get_prioridad_display()}."
-                )
+            for otra in Cita.objects.exclude(pk=self.pk).filter(
+                hora_inicio__isnull=False,
+                hora_fin__isnull=False,
+            ):
+                otra_dt_inicio = datetime.combine(otra.inicio, otra.hora_inicio)
+                otra_dt_fin    = datetime.combine(otra.fin,    otra.hora_fin)
+ 
+                if dt_inicio < otra_dt_fin and dt_fin > otra_dt_inicio:
+                    raise ValidationError(
+                        f"Esta cita se solapa con «{otra.titulo}» "
+                        f"({otra.inicio} {otra.hora_inicio}–{otra.hora_fin}) "
+                        f"— prioridad: {otra.get_prioridad_display()}."
+                    )
  
     class Meta:
         ordering = ["inicio"]

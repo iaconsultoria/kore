@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Calendario</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+ <script>
+  document.addEventListener("htmx:configRequest", (e) => {
+    e.detail.headers["X-CSRFToken"] = document.querySelector('meta[name="csrf-token"]').content;
+  });
+</script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
@@ -58,5 +64,11 @@
       {% endfor %}
     </tbody>
   </table>
+  <div
+  hx-get="{% url 'calendario:cita_boton' %}"
+  hx-trigger="citaGuardada from:body"
+  hx-target="#form-container"
+  hx-swap="innerHTML">
+</div>
 </body>
 </html>
