@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 class Categoria(models.Model):
@@ -55,6 +56,11 @@ class Cita(models.Model):
     prioridad = models.PositiveSmallIntegerField(choices=PRIORIDAD_CHOICES, default=2)
     repetir = models.CharField(max_length=10, choices=REPETIR_CHOICES, default="nunca")
     ubicacion = models.CharField(max_length=255, blank=True, default="")
+    def clean(self):
+        if self.hora_inicio is None and self.hora_fin is not None:
+            raise ValidationError(
+                {"hora_fin": "No puede haber hora de fin sin hora de inicio."}
+            )
  
     class Meta:
         ordering = ["inicio"]
