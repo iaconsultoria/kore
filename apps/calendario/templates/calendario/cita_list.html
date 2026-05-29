@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Calendario</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .btn {
+      display: inline-block; padding: .45rem 1rem; border-radius: 6px;
+      font-size: .875rem; font-weight: 500; cursor: pointer; border: none;
+      background: #2563eb; color: #fff;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-ghost { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
+    .btn-ghost:hover { background: #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    th { background: #f1f5f9; text-align: left; padding: .65rem 1rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+    td { padding: .7rem 1rem; border-top: 1px solid #f1f5f9; font-size: .9rem; vertical-align: middle; }
+    .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+    #form-container { margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>📅 Calendario</h1>
+
+  <div id="form-container">
+    <button
+      class="btn"
+      hx-get="{% url 'calendario:cita_create' %}"
+      hx-target="#form-container"
+      hx-swap="innerHTML">
+      + Nueva cita
+    </button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th>Hora</th>
+        <th>Categoría</th>
+        <th>Prioridad</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="cita-list">
+      {% for cita in citas %}
+        {% include "calendario/partials/cita_row.html" %}
+      {% empty %}
+        <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:2rem">Sin citas</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

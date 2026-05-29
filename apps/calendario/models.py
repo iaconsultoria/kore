@@ -61,6 +61,22 @@ class Cita(models.Model):
             raise ValidationError(
                 {"hora_fin": "No puede haber hora de fin sin hora de inicio."}
             )
+                # Validación de solapamiento: solo si ambas citas tienen hora
+        if self.hora_inicio and self.hora_fin and self.inicio and self.fin:
+            solapadas = Cita.objects.filter(
+                inicio__lte=self.fin,
+                fin__gte=self.inicio,
+                hora_inicio__lt=self.hora_fin,
+                hora_fin__gt=self.hora_inicio,
+            ).exclude(pk=self.pk)  # excluir la propia cita al editar
+ 
+            if solapadas.exists():
+                otra = solapadas.first()
+                raise ValidationError(
+                    f"Esta cita se solapa con «{otra.titulo}» "
+                    f"({otra.inicio} {otra.hora_inicio}–{otra.hora_fin})."
+                    f"— prioridad: {otra.get_prioridad_display()}."
+                )
  
     class Meta:
         ordering = ["inicio"]
