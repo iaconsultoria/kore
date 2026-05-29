@@ -102,7 +102,7 @@ class Recordatorio(models.Model):
     fecha_aviso = models.DateTimeField()
     tipo = models.CharField(max_length=15, choices=TIPO_CHOICES, default="notificacion")
  
-def __str__(self):
-     return f"Recordatorio [{self.tipo}]: {self.cita} — {self.fecha_aviso}"
+    def __str__(self):
+         return f"Recordatorio [{self.tipo}]: {self.cita} — {self.fecha_aviso}"
 
  
