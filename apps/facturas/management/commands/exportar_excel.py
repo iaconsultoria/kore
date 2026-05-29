@@ -58,11 +58,9 @@ class Command(BaseCommand):
         ws_iva.append(['Tipo IVA', 'Base imponible', 'IVA soportado'])
         tipos_iva = [21, 10, 4, 0]
         for tipo in tipos_iva:
-            facturas_tipo = Factura.objects.filter(
-                lineafactura__iva_porcentaje=tipo
-            ).distinct()
-            base = sum(float(f.base_imponible) for f in facturas_tipo)
-            iva = sum(float(f.iva_total) for f in facturas_tipo)
+            lineas_tipo = LineaFactura.objects.filter(iva_porcentaje=tipo)
+            base = sum(float(l.cantidad) * float(l.precio_unitario) for l in lineas_tipo)
+            iva = sum(float(l.cantidad) * float(l.precio_unitario) * tipo / 100 for l in lineas_tipo)
             etiqueta = f"{tipo}%" if tipo > 0 else "Exento"
             ws_iva.append([etiqueta, base, iva])
 
