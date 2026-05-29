@@ -17,13 +17,10 @@ def cita_create(request):
     form = CitaForm(request.POST or None)
     if request.method == "POST":
         if form.is_valid():
-            response = render(request, "calendario/partials/cita_form.html", {"form": form})
             cita = form.save()
+            response = render(request, "calendario/partials/cita_row.html", {"cita": cita})
             response["HX-Trigger"] = "citaGuardada"
-            response["HX-Reswap"] = "beforeend"
-            response["HX-Retarget"] = "#cita-list"
             return response
-            
         else:
             response = render(request, "calendario/partials/cita_form.html", {"form": form})
             response["HX-Retarget"] = "#form-container"
