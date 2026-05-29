@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import Factura
 from .forms import RevisionFacturaForm
@@ -23,6 +23,7 @@ def revisar_extraccion(request, pk):
             else:
                 form.save()
                 messages.success(request, "Factura guardada correctamente.")
+                return redirect('revisar_extraccion', pk=factura.pk)
     else:
         form = RevisionFacturaForm(instance=factura)
 
