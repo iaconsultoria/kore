@@ -1,0 +1,29 @@
+[
+  {
+    "model": "facturas.categoriagasto",
+    "pk": 1,
+    "fields": {
+      "nombre": "Servicios profesionales",
+      "deducible_iva": true,
+      "cuenta_contable": "629"
+    }
+  },
+  {
+    "model": "facturas.categoriagasto",
+    "pk": 2,
+    "fields": {
+      "nombre": "Material de oficina",
+      "deducible_iva": true,
+      "cuenta_contable": "629"
+    }
+  },
+  {
+    "model": "facturas.categoriagasto",
+    "pk": 3,
+    "fields": {
+      "nombre": "Multas y sanciones",
+      "deducible_iva": false,
+      "cuenta_contable": "678"
+    }
+  }
+]
