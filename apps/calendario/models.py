@@ -21,7 +21,7 @@ class Categoria(models.Model):
     plantilla_notas = models.TextField(blank=True, default="")
 
     class Meta:
-        verbose_name_plural = "categorias"
+        verbose_name_plural = "categorías"
 
     def __str__(self):
         return self.nombre
@@ -61,25 +61,7 @@ class Cita(models.Model):
         if self.hora_inicio is None and self.hora_fin is not None:
             raise ValidationError(
                 {"hora_fin": "No puede haber hora de fin sin hora de inicio."}
-            )
-                # Validación de solapamiento: solo si ambas citas tienen hora
-        if self.hora_inicio and self.hora_fin and self.inicio and self.fin:
-            dt_inicio = datetime.combine(self.inicio, self.hora_inicio)
-            dt_fin    = datetime.combine(self.fin,    self.hora_fin)
- 
-            for otra in Cita.objects.exclude(pk=self.pk).filter(
-                hora_inicio__isnull=False,
-                hora_fin__isnull=False,
-            ):
-                otra_dt_inicio = datetime.combine(otra.inicio, otra.hora_inicio)
-                otra_dt_fin    = datetime.combine(otra.fin,    otra.hora_fin)
- 
-                if dt_inicio < otra_dt_fin and dt_fin > otra_dt_inicio:
-                    raise ValidationError(
-                        f"Esta cita se solapa con «{otra.titulo}» "
-                        f"({otra.inicio} {otra.hora_inicio}–{otra.hora_fin}) "
-                        f"— prioridad: {otra.get_prioridad_display()}."
-                    )
+        )
  
     class Meta:
         ordering = ["inicio"]
