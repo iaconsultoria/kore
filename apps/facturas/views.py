@@ -16,15 +16,9 @@ def revisar_extraccion(request, pk):
             ).exclude(pk=factura.pk).first()
 
             if duplicado:
-                if request.headers.get('HX-Request'):
-                    return HttpResponse(
-                        f"<p><strong>Ya existe una factura con el número "
-                        f"{form.cleaned_data['numero_factura']} para este proveedor.</strong></p>"
-                    )
+                pass
             else:
                 form.save()
-                if request.headers.get('HX-Request'):
-                    return HttpResponse("<p><strong>Factura guardada correctamente.</strong></p>")
                 return redirect('revisar_extraccion', pk=factura.pk)
 
     else:
