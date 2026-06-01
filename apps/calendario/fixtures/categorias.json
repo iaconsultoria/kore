@@ -1,0 +1,57 @@
+[
+  {
+    "model": "calendario.categoria",
+    "pk": 1,
+    "fields": {
+      "nombre": "Cliente",
+      "color": "#2563EB",
+      "prioridad": 3,
+      "politica_reprog": "rigida",
+      "plantilla_notas": ""
+    }
+  },
+  {
+    "model": "calendario.categoria",
+    "pk": 2,
+    "fields": {
+      "nombre": "Personal",
+      "color": "#16A34A",
+      "prioridad": 1,
+      "politica_reprog": "flexible",
+      "plantilla_notas": ""
+    }
+  },
+  {
+    "model": "calendario.categoria",
+    "pk": 3,
+    "fields": {
+      "nombre": "Foco",
+      "color": "#DC2626",
+      "prioridad": 3,
+      "politica_reprog": "rigida",
+      "plantilla_notas": ""
+    }
+  },
+  {
+    "model": "calendario.categoria",
+    "pk": 4,
+    "fields": {
+      "nombre": "Formación",
+      "color": "#D97706",
+      "prioridad": 2,
+      "politica_reprog": "flexible",
+      "plantilla_notas": ""
+    }
+  },
+  {
+    "model": "calendario.categoria",
+    "pk": 5,
+    "fields": {
+      "nombre": "Salud",
+      "color": "#0891B2",
+      "prioridad": 2,
+      "politica_reprog": "cancelar",
+      "plantilla_notas": ""
+    }
+  }
+]
