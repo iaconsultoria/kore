@@ -94,6 +94,44 @@ Para crear la base de datos, necesitar tener PostgreSQL instalado y funcionando.
    python manage.py runserver
    # Disponible en http://127.0.0.1:8000
 ```
+
+## Reset de BD local
+
+Esta sección permite reiniciar completamente la base de datos en entorno local.
+
+Este proceso elimina todos los datos actuales.
+
+### 1. Parar el servidor
+
+Detener la ejecución del servidor con:
+
+bash ---> Ctrl + C
+
+### Eliminar migraciones (apps del proyecto)
+
+En el bash
+
+find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
+find . -path "*/migrations/*.pyc" -delete
+
+### Borrar la base de datos (PostgreSQL)
+
+En el bash
+
+psql -U postgres
+
+En SQL
+
+DROP DATABASE nombre_bd;
+CREATE DATABASE nombre_bd;
+
+### Volver a crear migraciones
+
+En el bash
+
+python manage.py makemigrations
+python manage.py migrate
+
 ## Decisiones
 ### Versiones
 - asgiref>=3.8.1,<4
@@ -104,7 +142,7 @@ Para crear la base de datos, necesitar tener PostgreSQL instalado y funcionando.
 - django-environ>=0.13.0,<0.14.0
 
 ### Por qué PostgreSQL
-Se ha usado PostgreSQL ya que es de código abierto, puede gestionar numerosas conexiones simúltaneas sin bajar su rendimiento. 
+Se ha usado PostgreSQL ya que es de código abierto, puede gestionar numerosas conexiones simúltaneas sin bajar su rendimiento.
 
 ### Estructura de carpetas
 ```

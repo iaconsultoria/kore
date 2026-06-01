@@ -1,3 +1,6 @@
+from django.conf import settings
+from django.conf.urls.static import static
+
 """
 URL configuration for kore project.
 
@@ -21,3 +24,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('facturas/', include('apps.facturas.urls')),
 ]
+
+urlpatterns += static(
+    settings.MEDIA_URL,
+    document_root=settings.MEDIA_ROOT
+)
