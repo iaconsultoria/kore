@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+from django.http import HttpResponse
 from .models import Factura
 from .forms import RevisionFacturaForm
 
@@ -16,15 +16,33 @@ def revisar_extraccion(request, pk):
             ).exclude(pk=factura.pk).first()
 
             if duplicado:
-                messages.warning(
-                    request,
-                    f"Ya existe una factura con el número {form.cleaned_data['numero_factura']} para este proveedor."
-                )
+                if request.headers.get('HX-Request'):
+                    return HttpResponse(
+                        f"<p><strong>Ya existe una factura con el número "
+                        f"{form.cleaned_data['numero_factura']} para este proveedor.</strong></p>"
+                    )
             else:
                 form.save()
-                messages.success(request, "Factura guardada correctamente.")
+                if request.headers.get('HX-Request'):
+                    return HttpResponse("<p><strong>Factura guardada correctamente.</strong></p>")
                 return redirect('revisar_extraccion', pk=factura.pk)
+
     else:
         form = RevisionFacturaForm(instance=factura)
 
     return render(request, 'facturas/revisar_extraccion.html', {'form': form, 'factura': factura})
+
+def comprobar_duplicado(request, pk):
+    numero = request.GET.get('numero_factura', '')
+    proveedor_id = request.GET.get('proveedor', '')
+
+    duplicado = Factura.objects.filter(
+        proveedor_id=proveedor_id,
+        numero_factura=numero,
+    ).exclude(pk=pk).first()
+
+    if duplicado:
+        return HttpResponse(
+            f"<p><strong>Ya existe una factura con el número {numero} para este proveedor.</strong></p>"
+        )
+    return HttpResponse("")
