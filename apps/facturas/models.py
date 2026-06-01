@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator, FileExtensionValidator
 from django.core.exceptions import ValidationError
+from pgvector.django import VectorField
 
 
 validador_nif = RegexValidator(
@@ -106,3 +107,15 @@ class LineaFactura(models.Model):
 
     def __str__(self):
         return f"{self.concepto} ({self.cantidad} × {self.precio_unitario})"
+
+class FragmentoNormativa(models.Model):
+    texto = models.TextField()
+    fuente = models.CharField(max_length=200)
+    embedding = VectorField(dimensions=2048)
+
+    class Meta:
+        verbose_name = "Fragmento de normativa"
+        verbose_name_plural = "Fragmentos de normativa"
+
+    def __str__(self):
+        return f"{self.fuente} — {self.texto[:50]}"

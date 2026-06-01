@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Factura, LineaFactura, Proveedor, CategoriaGasto
+from .models import Factura, LineaFactura, Proveedor, CategoriaGasto, FragmentoNormativa
 
 
 class LineaFacturaInline(admin.TabularInline):
@@ -24,3 +24,8 @@ class ProveedorAdmin(admin.ModelAdmin):
 @admin.register(CategoriaGasto)
 class CategoriaGastoAdmin(admin.ModelAdmin):
     list_display = ("nombre", "deducible_iva", "cuenta_contable")
+
+
+@admin.register(FragmentoNormativa)
+class FragmentoNormativaAdmin(admin.ModelAdmin):
+    list_display = ('fuente', 'texto')
