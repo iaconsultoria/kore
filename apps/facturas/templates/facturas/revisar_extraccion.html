@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Revisar extracción — Factura {{ factura.pk }}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+    <h1>Revisar extracción — Factura {{ factura.pk }}</h1>
+
+    <div id="aviso-duplicado"></div>
+
+   <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <p>
+            {{ form.numero_factura.label_tag }}
+            {{ form.numero_factura }}
+            <span hx-get="{% url 'comprobar_duplicado' factura.pk %}"
+                  hx-trigger="change from:previous input"
+                  hx-target="#aviso-duplicado"
+                  hx-include="[name='proveedor'],[name='numero_factura']">
+            </span>
+        </p>
+        <p>{{ form.fecha_emision.label_tag }}{{ form.fecha_emision }}</p>
+        <p>{{ form.proveedor.label_tag }}{{ form.proveedor }}</p>
+        <p>{{ form.categoria.label_tag }}{{ form.categoria }}</p>
+        <p>{{ form.base_imponible.label_tag }}{{ form.base_imponible }}</p>
+        <p>{{ form.iva_total.label_tag }}{{ form.iva_total }}</p>
+        <p>{{ form.total.label_tag }}{{ form.total }}</p>
+        <p>{{ form.archivo_original.label_tag }}{{ form.archivo_original }}</p>
+        <button type="submit">Guardar</button>
+    </form>
+</body>
+</html>
