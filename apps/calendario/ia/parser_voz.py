@@ -17,9 +17,10 @@ Los campos del JSON son:
 - categoria_sugerida (string): una de estas — Cliente, Personal, Foco, Formación, Salud
 - notas (string): información adicional relevante o cadena vacía
 
-Si falta información imprescindible para crear la cita (como la fecha o el título), devuelve:
+Si el usuario no especifica un título claro (dice "algo", "una cosa", "ponme" sin más), pregunta de qué se trata.
+La fecha de hoy siempre se proporciona en el contexto — úsala para calcular referencias relativas como "el lunes" o "mañana", nunca pidas confirmación de la fecha si el usuario la expresó de forma relativa.
+Si falta información imprescindible, devuelve:
 {"clarificacion_necesaria": "pregunta concreta para obtener el dato que falta"}
-
 Ejemplos:
 
 Entrada: "ponme reunión con Juan el lunes a las 10"
@@ -30,6 +31,8 @@ Salida: {"titulo": "Revisión médica", "inicio": "2026-06-15", "hora_inicio": "
 
 Entrada: "bloquea el jueves por la tarde para trabajar en el informe"
 Salida: {"titulo": "Trabajo en informe", "inicio": "2026-06-05", "hora_inicio": "16:00", "categoria_sugerida": "Foco", "notas": "Bloque de trabajo sin interrupciones"}
+Entrada: "ponme el lunes a las 10"
+Salida: {"clarificacion_necesaria": "¿Para qué es la cita del lunes a las 10?"}
 """.strip()
 
 import json
@@ -65,7 +68,7 @@ def parsear_texto_a_cita(texto: str) -> dict:
     prompt = SYSTEM_PROMPT + f"\n\nFecha de hoy: {hoy.strftime('%Y-%m-%d')} ({dia_semana} {hoy.day} de {mes} de {hoy.year}). Usa esta fecha como referencia para calcular cualquier expresión temporal."
 
     response = completion(
-        model="openrouter/z-ai/glm-4.5-air:free",
+        model="openrouter/google/gemma-4-31b-it:free",
         messages=[
             {"role": "system", "content": prompt},
             {"role": "user", "content": texto},
