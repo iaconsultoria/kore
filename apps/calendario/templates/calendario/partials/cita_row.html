@@ -1,0 +1,37 @@
+<tr id="cita-{{ cita.pk }}">
+  <td><strong>{{ cita.titulo }}</strong></td>
+  <td>{{ cita.inicio }}</td>
+  <td>{{ cita.fin }}</td>
+  <td>
+    {% if cita.hora_inicio %}
+      {{ cita.hora_inicio|time:"H:i" }}{% if cita.hora_fin %} – {{ cita.hora_fin|time:"H:i" }}{% endif %}
+    {% else %}
+      <span style="color:#94a3b8">—</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if cita.categoria %}
+<span class="color-dot" style="background:{{ cita.categoria.color }} /* stylelint-disable */"></span>      {{ cita.categoria.nombre }}
+    {% else %}
+      <span style="color:#94a3b8">—</span>
+    {% endif %}
+  </td>
+  <td>{{ cita.get_prioridad_display }}</td>
+  <td style="display:flex;gap:.5rem">
+    <button
+      class="btn btn-ghost"
+      hx-get="{% url 'calendario:cita_edit' cita.pk %}"
+      hx-target="#form-container"
+      hx-swap="innerHTML">
+      Editar
+    </button>
+    <button
+      class="btn btn-danger"
+      hx-delete="{% url 'calendario:cita_delete' cita.pk %}"
+      hx-target="#cita-{{ cita.pk }}"
+      hx-swap="outerHTML"
+      hx-confirm="¿Borrar «{{ cita.titulo }}»?">
+      Borrar
+    </button>
+  </td>
+</tr>
