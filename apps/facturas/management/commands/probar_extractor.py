@@ -20,4 +20,4 @@ class Command(BaseCommand):
         self.stdout.write(json.dumps(datos, indent=2, ensure_ascii=False))
         self.stdout.write(f"\nTiempo: {tiempo:.2f}s")
         self.stdout.write(f"Modelo: openrouter/google/gemma-4-31b-it:free")
-        self.stdout.write(f"Coste estimado: €0.000069 entrada + €0.000276 salida por 1K tokens")
+        self.stdout.write(f"Coste estimado: €0.00 (modelo gratuito OpenRouter)")

@@ -11,9 +11,9 @@
 | gpt-4o | $0.005 | $0.015 | €0.00460 | €0.01380 | 3-5s | OpenAI (EEUU, RGPD DPA) | Muy alta |
 | gemini-1.5-pro | $0.00125 | $0.005 | €0.00115 | €0.00460 | 2-3s | Google (EEUU, RGPD DPA) | Alta |
 
-## Modelo elegido: claude-3-haiku
+## Modelo elegido: openrouter/google/gemma-4-31b-it:free
 
-Elijo claude-3-haiku porque sonsidero que es el más equilibrado para la extracción de facturas españolas con mejor precisión que gemini-1.5-flash en campos estructurados como NIF, importes o fechas con un coste más bajo que gpt-4o-mini en volumen alto y buena latencia. claude-3-sonnet y gpt-4o tienen mejor precisión pero su coste es 15 veces mayor sin justificación. Así que comparando todos los puntos importantes esta es mi elección.
+Al principio elegí claude-3-haiku por su coste y precisión. Pero Google AI Studio está bloqueado en España y Anthropic pide $5 de crédito inicial. Una alternativa gratuita con soporte de visión disponible en OpenRouter fue google/gemma-4-31b-it:free. El resto de la lógica no cambia, si en el futuro tenemos una clave de Anthropic u OpenAI, solo tendríamo que cambiar el modelo en extractor.py.
 
 ## Fuentes
 
