@@ -33,7 +33,7 @@ class Command(BaseCommand):
             .order_by("distancia")[:3]
         )
 
-        # Debug temporal que muestra distancias de los resultados
+        # Debug temporal que muestras distancias de los resultados
         for f in fragmentos:
             self.stdout.write(f"DEBUG distancia: {f.distancia:.4f} | {f.fuente[:60]}")
 
