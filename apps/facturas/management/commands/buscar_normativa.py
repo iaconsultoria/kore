@@ -7,6 +7,8 @@ from apps.facturas.models import FragmentoNormativa
 
 load_dotenv()
 
+UMBRAL_DISTANCIA = 0.70
+
 
 class Command(BaseCommand):
     help = "Busca fragmentos de normativa relevantes dado un texto de gasto"
@@ -25,12 +27,23 @@ class Command(BaseCommand):
         )
         embedding = respuesta.data[0]["embedding"]
 
-        fragmentos = FragmentoNormativa.objects.order_by(
-            CosineDistance("embedding", embedding)
-        )[:3]
+        fragmentos = (
+            FragmentoNormativa.objects
+            .annotate(distancia=CosineDistance("embedding", embedding))
+            .order_by("distancia")[:3]
+        )
+
+        # Debug temporal que muestra distancias de los resultados
+        for f in fragmentos:
+            self.stdout.write(f"DEBUG distancia: {f.distancia:.4f} | {f.fuente[:60]}")
+
+        # Comprobar umbral con el resultado más cercano
+        if not fragmentos or fragmentos[0].distancia > UMBRAL_DISTANCIA:
+            self.stdout.write("Sin normativa relevante encontrada")
+            return
 
         self.stdout.write(f"\nConsulta: {texto}\n")
         for i, f in enumerate(fragmentos, 1):
-            self.stdout.write(f"--- Resultado {i} ---")
+            self.stdout.write(f"--- Resultado {i} (distancia: {f.distancia:.4f}) ---")
             self.stdout.write(f"Fuente: {f.fuente}")
             self.stdout.write(f"Texto: {f.texto[:200]}...\n")
