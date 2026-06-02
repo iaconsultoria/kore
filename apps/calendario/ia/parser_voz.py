@@ -1,77 +1,113 @@
-import json
-import os
-from litellm import completion
+from datetime import datetime, timedelta
+import re
+import json  
+from litellm import completion  
 from django.conf import settings
-
-api_key=settings.OPENROUTER_API_KEY,
 
 SYSTEM_PROMPT = """
 Eres un asistente que convierte texto libre en español a JSON estructurado para crear citas en un calendario.
 
-Devuelve ÚNICAMENTE un objeto JSON válido, sin explicaciones ni texto adicional.
+Devuelve ÚNICAMENTE un objeto JSON válido.
 
 Los campos del JSON son:
-- titulo (string): título breve de la cita
-- inicio (string): fecha en formato YYYY-MM-DD
-- hora_inicio (string|null): hora en formato HH:MM o null si no se menciona
-- categoria_sugerida (string): una de estas — Cliente, Personal, Foco, Formación, Salud
-- notas (string): información adicional relevante o cadena vacía
+- titulo (string)
+- inicio (string): YYYY-MM-DD
+- hora_inicio (string|null): HH:MM
+- categoria_sugerida (string)
+- notas (string)
 
-Si el usuario no especifica un título claro (dice "algo", "una cosa", "ponme" sin más), pregunta de qué se trata.
-La fecha de hoy siempre se proporciona en el contexto — úsala para calcular referencias relativas como "el lunes" o "mañana", nunca pidas confirmación de la fecha si el usuario la expresó de forma relativa.
-Si falta información imprescindible, devuelve:
-{"clarificacion_necesaria": "pregunta concreta para obtener el dato que falta"}
+IMPORTANTE:
+- La fecha y hora ya han sido interpretadas previamente y se te proporcionan.
+- Usa EXACTAMENTE los valores de inicio y hora_inicio que se te dan. No los recalcules.
+- Si no hay un título claro en el texto, devuelve: {"clarificacion_necesaria": "pregunta"}
+
 Ejemplos:
 
 Entrada: "ponme reunión con Juan el lunes a las 10"
-Salida: {"titulo": "Reunión con Juan", "inicio": "2026-06-02", "hora_inicio": "10:00", "categoria_sugerida": "Cliente", "notas": ""}
+Fecha detectada: inicio=2026-06-09, hora_inicio=10:00
+Salida: {"titulo": "Reunión con Juan", "inicio": "2026-06-09", "hora_inicio": "10:00", "categoria_sugerida": "Cliente", "notas": ""}
 
 Entrada: "tengo revisión médica el 15 de junio a las 9 y media"
+Fecha detectada: inicio=2026-06-15, hora_inicio=09:30
 Salida: {"titulo": "Revisión médica", "inicio": "2026-06-15", "hora_inicio": "09:30", "categoria_sugerida": "Salud", "notas": ""}
 
-Entrada: "bloquea el jueves por la tarde para trabajar en el informe"
-Salida: {"titulo": "Trabajo en informe", "inicio": "2026-06-05", "hora_inicio": "16:00", "categoria_sugerida": "Foco", "notas": "Bloque de trabajo sin interrupciones"}
-Entrada: "ponme el lunes a las 10"
+Entrada: "el lunes a las 10"
+Fecha detectada: inicio=2026-06-09, hora_inicio=10:00
 Salida: {"clarificacion_necesaria": "¿Para qué es la cita del lunes a las 10?"}
 """.strip()
 
-import json
-import os
-from datetime import date
-from litellm import completion
-from django.conf import settings
-
 DIAS_SEMANA = {
-    "Monday": "lunes",
-    "Tuesday": "martes",
-    "Wednesday": "miércoles",
-    "Thursday": "jueves",
-    "Friday": "viernes",
-    "Saturday": "sábado",
-    "Sunday": "domingo",
+    "lunes": 0,
+    "martes": 1,
+    "miercoles": 2,
+    "jueves": 3,
+    "viernes": 4,
+    "sabado": 5,
+    "domingo": 6,
 }
+import unicodedata
 
-MESES = {
-    "January": "enero", "February": "febrero", "March": "marzo",
-    "April": "abril", "May": "mayo", "June": "junio",
-    "July": "julio", "August": "agosto", "September": "septiembre",
-    "October": "octubre", "November": "noviembre", "December": "diciembre",
-}
+def quitar_tildes(texto: str) -> str:
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
 
-SYSTEM_PROMPT = """..."""  # el tuyo sin cambios
 
+def extraer_fecha(texto: str):
+    print(">>> extraer_fecha llamada con:", repr(texto))  
+    texto = quitar_tildes(texto.lower()) 
+    ahora = datetime.now()
+    fecha = None
+    hora = None
+
+    # Detectar día de la semana
+    for nombre, numero in DIAS_SEMANA.items():
+        if nombre in texto:
+            dias_hasta = (numero - ahora.weekday()) % 7
+            if dias_hasta == 0:
+                dias_hasta = 7
+            fecha = ahora + timedelta(days=dias_hasta)
+            break
+
+    # Detectar hora — "a las" o "a la" es OBLIGATORIO
+    match_hora = re.search(
+        r"(?:a las|a la)\s*(\d{1,2})(?::(\d{2}))?",
+        texto
+    )
+
+    if match_hora:
+        hora_num = int(match_hora.group(1))
+        if 0 <= hora_num <= 23:
+            minutos = match_hora.group(2) or "00"
+            hora = f"{hora_num:02}:{minutos}"
+
+    inicio = fecha.strftime("%Y-%m-%d") if fecha else None
+
+    return inicio, hora
 
 def parsear_texto_a_cita(texto: str) -> dict:
-    hoy = date.today()
-    dia_semana = DIAS_SEMANA[hoy.strftime("%A")]
-    mes = MESES[hoy.strftime("%B")]
-    prompt = SYSTEM_PROMPT + f"\n\nFecha de hoy: {hoy.strftime('%Y-%m-%d')} ({dia_semana} {hoy.day} de {mes} de {hoy.year}). Usa esta fecha como referencia para calcular cualquier expresión temporal."
+    inicio, hora_inicio = extraer_fecha(texto)
+
+    contexto_fecha = f"""
+Fecha detectada automáticamente:
+- inicio: {inicio}
+- hora_inicio: {hora_inicio}
+
+NO recalcules estas fechas.
+""".strip()
 
     response = completion(
-        model="openrouter/google/gemma-4-31b-it:free",
+        model="openrouter/z-ai/glm-4.5-air:free",
         messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": texto},
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": f"{contexto_fecha}\n\nTexto original: {texto}",
+            },
         ],
         api_key=settings.OPENROUTER_API_KEY,
     )
@@ -80,7 +116,14 @@ def parsear_texto_a_cita(texto: str) -> dict:
 
     if contenido.startswith("```"):
         contenido = contenido.split("```")[1]
+
         if contenido.startswith("json"):
             contenido = contenido[4:]
 
-    return json.loads(contenido)
+    resultado = json.loads(contenido)
+
+    # FORZAR fecha/hora correctas
+    resultado["inicio"] = inicio
+    resultado["hora_inicio"] = hora_inicio
+
+    return resultado
