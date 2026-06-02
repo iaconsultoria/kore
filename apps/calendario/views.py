@@ -28,6 +28,33 @@ def cita_create(request):
             return response
     return render(request, "calendario/partials/cita_form.html", {"form": form})
 
+from django.views.decorators.http import require_POST
+from django.shortcuts import render
+from .forms import CitaForm
+from .ia.parser_voz import parsear_texto_a_cita
+
+@require_POST
+def cita_desde_texto(request):
+    texto = request.POST.get("texto", "")
+    resultado = parsear_texto_a_cita(texto)
+
+    if "clarificacion_necesaria" in resultado:
+        return render(request, "calendario/partials/cita_clarificacion.html", {
+            "pregunta": resultado["clarificacion_necesaria"]
+        })
+
+    form = CitaForm(initial={
+        "titulo": resultado.get("titulo", ""),
+        "inicio": resultado.get("inicio", ""),
+        "hora_inicio": resultado.get("hora_inicio", ""),
+        "categoria": resultado.get("categoria_sugerida", ""),
+        "notas": resultado.get("notas", ""),
+    })
+
+    return render(request, "calendario/partials/cita_form_prerellenado.html", {
+        "form": form
+    })
+
 def cita_edit(request, pk):
     cita = get_object_or_404(Cita, pk=pk)
     form = CitaForm(request.POST or None, instance=cita)

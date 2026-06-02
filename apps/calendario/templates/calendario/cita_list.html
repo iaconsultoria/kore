@@ -5,11 +5,11 @@
   <title>Calendario</title>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
- <script>
-  document.addEventListener("htmx:configRequest", (e) => {
-    e.detail.headers["X-CSRFToken"] = document.querySelector('meta[name="csrf-token"]').content;
-  });
-</script>
+  <script>
+    document.addEventListener("htmx:configRequest", (e) => {
+      e.detail.headers["X-CSRFToken"] = document.querySelector('meta[name="csrf-token"]').content;
+    });
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
@@ -34,7 +34,20 @@
 <body>
   <h1>📅 Calendario</h1>
 
-  <div id="form-container">
+  <!-- Campo IA -->
+  <form hx-post="{% url 'calendario:cita_desde_texto' %}"
+        hx-target="#form-container"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="text"
+           name="texto"
+           placeholder="Describe tu cita..."
+           style="border:1px solid #cbd5e1; border-radius:6px; padding:.45rem .75rem; width:100%; margin-bottom:.5rem;" />
+    <button type="submit" class="btn">Describe tu cita...</button>
+  </form>
+
+  <!-- Formulario / botón nueva cita -->
+  <div id="form-container" style="margin-top:1rem;">
     <button
       class="btn"
       hx-get="{% url 'calendario:cita_create' %}"
@@ -64,11 +77,12 @@
       {% endfor %}
     </tbody>
   </table>
+
   <div
-  hx-get="{% url 'calendario:cita_boton' %}"
-  hx-trigger="citaGuardada from:body"
-  hx-target="#form-container"
-  hx-swap="innerHTML">
-</div>
+    hx-get="{% url 'calendario:cita_boton' %}"
+    hx-trigger="citaGuardada from:body"
+    hx-target="#form-container"
+    hx-swap="innerHTML">
+  </div>
 </body>
 </html>
