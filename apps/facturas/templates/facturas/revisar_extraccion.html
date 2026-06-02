@@ -10,7 +10,7 @@
 
     <div id="aviso-duplicado"></div>
 
-   <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <p>
             {{ form.numero_factura.label_tag }}
@@ -23,7 +23,24 @@
         </p>
         <p>{{ form.fecha_emision.label_tag }}{{ form.fecha_emision }}</p>
         <p>{{ form.proveedor.label_tag }}{{ form.proveedor }}</p>
-        <p>{{ form.categoria.label_tag }}{{ form.categoria }}</p>
+
+        <p>
+            {{ form.categoria.label_tag }}{{ form.categoria }}
+        </p>
+
+        <!-- Contexto normativo -->
+        {% if fragmentos_normativa %}
+        <div style="background-color: #f0f0f0; padding: 15px; margin-top: 10px; border-left: 4px solid #0066cc;">
+            <h3>Contexto normativo</h3>
+            {% for fragmento in fragmentos_normativa %}
+            <div style="margin-bottom: 15px; padding: 10px; background-color: white; border-radius: 4px;">
+                <strong>{{ fragmento.fuente }}</strong>
+                <p>{{ fragmento.texto }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <p>{{ form.base_imponible.label_tag }}{{ form.base_imponible }}</p>
         <p>{{ form.iva_total.label_tag }}{{ form.iva_total }}</p>
         <p>{{ form.total.label_tag }}{{ form.total }}</p>
