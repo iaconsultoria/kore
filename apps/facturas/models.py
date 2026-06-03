@@ -53,6 +53,7 @@ IVA_CHOICES = [
 class Factura(models.Model):
     numero_factura = models.CharField(max_length=50)
     fecha_emision = models.DateField()
+    fecha_vencimiento = models.DateField(null=True, blank=True)
     proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
     categoria = models.ForeignKey(
         CategoriaGasto,
@@ -82,6 +83,12 @@ class Factura(models.Model):
                 name="factura_unica_por_proveedor"
             )
         ]
+
+    def save(self, *args, **kwargs):
+        from datetime import timedelta
+        if not self.fecha_vencimiento:
+            self.fecha_vencimiento = self.fecha_emision + timedelta(days=30)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Factura {self.numero_factura}"
