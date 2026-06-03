@@ -1,8 +1,132 @@
-<form method="POST" action="{% url 'calendario:cita_create' %}"
-      hx-post="{% url 'calendario:cita_create' %}"
-      hx-target="#cita-list"
-      hx-swap="beforeend">
+<style>
+  .form-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin-bottom: 1rem;
+  }
+  .form-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 1.25rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .form-field { display: flex; flex-direction: column; gap: .3rem; }
+  .form-field.full { grid-column: span 2; }
+  .form-field label {
+    font-size: .8rem;
+    font-weight: 500;
+    color: #475569;
+  }
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    padding: .5rem .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: .875rem;
+    color: #1e293b;
+    background: #f8fafc;
+    transition: border-color .15s, background .15s;
+  }
+  .form-field input:focus,
+  .form-field select:focus,
+  .form-field textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #fff;
+  }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .form-field .error { font-size: .78rem; color: #dc2626; margin-top: .2rem; }
+  .todo-el-dia-label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .5rem;
+    font-size: .8rem;
+    color: #475569;
+    cursor: pointer;
+  }
+  .form-actions {
+    grid-column: span 2;
+    display: flex;
+    gap: .5rem;
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .error-banner {
+    grid-column: span 2;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    color: #dc2626;
+    font-size: .875rem;
+  }
+</style>
+<div class="form-card">
+  <div class="form-title">➕ Nueva cita</div>
+
+  <form
+    hx-post="{% url 'calendario:cita_create' %}"
+    hx-target="#cita-list"
+    hx-swap="beforeend">
+
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn" style="margin-top:.75rem;">Guardar cita</button>
-</form>
+    <div class="form-grid">
+
+      {% for field in form %}
+        {% if field.name == 'inicio' %}
+          <div class="form-field">
+            <label>{{ field.label }} *</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+            <label class="todo-el-dia-label">
+              <input type="checkbox" id="todo-el-dia" onchange="if(this.checked) {
+              document.getElementById('id_fin').value = document.getElementById('id_inicio').value;
+              document.getElementById('div-fin').style.opacity = '.4';
+              document.getElementById('id_fin').readOnly = true;
+            } else {
+              document.getElementById('div-fin').style.opacity = '1';
+              document.getElementById('id_fin').readOnly = false;
+            }">
+              Todo el día
+            </label>
+          </div>
+        {% elif field.name == 'fin' %}
+          <div class="form-field" id="div-fin">
+            <label>{{ field.label }} *</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+        {% elif field.name == 'anotaciones' %}
+          <div class="form-field full">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+        {% else %}
+          <div class="form-field">
+            <label>{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <div class="form-actions">
+        <button type="submit" class="btn">Guardar cita</button>
+      </div>
+
+    </div>
+  </form>
+</div>
