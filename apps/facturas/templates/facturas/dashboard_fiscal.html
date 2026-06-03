@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard fiscal — Kore</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        .seccion { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-left: 4px solid #007bff; }
+        .seccion h2 { color: #007bff; }
+        .iva-mes { font-size: 28px; font-weight: bold; color: #28a745; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f5f5f5; }
+        tr:hover { background-color: #f0f0f0; }
+        .sin-clasificar { background-color: #fff3cd; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard fiscal</h1>
+
+    <!-- IVA soportado del mes -->
+    <div class="seccion">
+        <h2>IVA soportado del mes</h2>
+        <p class="iva-mes">{{ iva_mes|floatformat:2 }} €</p>
+    </div>
+
+    <!-- Gastos por categoría -->
+    <div class="seccion">
+        <h2>Gastos por categoría</h2>
+        {% if gastos_por_categoria %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoría</th>
+                    <th>Total base imponible</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gasto in gastos_por_categoria %}
+                <tr>
+                    <td>{{ gasto.categoria__nombre }}</td>
+                    <td>{{ gasto.total|floatformat:2 }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No hay gastos clasificados.</p>
+        {% endif %}
+    </div>
+
+    <!-- Facturas sin clasificar -->
+    <div class="seccion">
+        <h2>Facturas sin clasificar</h2>
+        {% if sin_clasificar %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Número de factura</th>
+                    <th>Proveedor</th>
+                    <th>Total</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for factura in sin_clasificar %}
+                <tr class="sin-clasificar">
+                    <td>{{ factura.numero_factura }}</td>
+                    <td>{{ factura.proveedor.nombre }}</td>
+                    <td>{{ factura.total }} €</td>
+                    <td><a href="{% url 'revisar_extraccion' factura.pk %}">Clasificar</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Todas las facturas están clasificadas.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
