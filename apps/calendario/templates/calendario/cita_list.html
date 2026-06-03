@@ -48,10 +48,11 @@
 </head>
 <body>
   <h1>📅 Calendario</h1>
-  <a href="{% url 'calendario:sugerir_reprogramacion' today %}" class="btn" style="background:#475569;margin-left:.5rem">
-  📊 Analizar agenda
-</a>
-<br>
+    <a href="{% url 'calendario:sugerir_reprogramacion' today %}" class="btn" style="background:#5e8cf1;margin-left:.5rem">
+    📊 Analizar agenda
+  </a>
+  <div style="margin-top: 2rem;">
+
   <!-- Campo IA -->
   <form hx-post="{% url 'calendario:cita_desde_texto' %}"
         hx-target="#form-container"

@@ -125,7 +125,15 @@
 
       <div class="form-actions">
         <button type="submit" class="btn">Guardar cita</button>
-      </div>
+      <button
+          type="button"
+          class="btn btn-ghost"
+          hx-get="{% url 'calendario:cita_boton' %}"
+          hx-target="#form-container"
+          hx-swap="innerHTML">
+          Cancelar
+        </button>
+      </div>  
 
     </div>
   </form>

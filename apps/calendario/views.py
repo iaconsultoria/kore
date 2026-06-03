@@ -56,7 +56,7 @@ def cita_desde_texto(request):
         "inicio": resultado.get("inicio", ""),
         "hora_inicio": resultado.get("hora_inicio", ""),
         "categoria": resultado.get("categoria_sugerida", ""),
-        "notas": resultado.get("notas", ""),
+        "anotaciones": resultado.get("anotaciones", ""),
     })
 
     return render(request, "calendario/partials/cita_form_prerellenado.html", {
