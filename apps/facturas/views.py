@@ -1,10 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
-from .models import Factura, LineaFactura
+from .models import Factura, LineaFactura, CategoriaGasto
 from .forms import RevisionFacturaForm
-from .utils import buscar_normativa_por_texto
+from .utils import buscar_normativa_por_texto, sugerir_categoria
 from django.utils import timezone
 from datetime import timedelta
+from django.views.decorators.http import require_POST
 
 
 def revisar_extraccion(request, pk):
@@ -109,3 +110,40 @@ def dashboard_fiscal(request):
         'gastos_por_categoria': gastos_por_categoria,
         'sin_clasificar': sin_clasificar
     })
+
+
+def sugerir_categoria_view(request, pk):
+    factura = get_object_or_404(Factura, pk=pk)
+    lineas = factura.lineafactura_set.all()
+
+    try:
+        sugerencia = sugerir_categoria(factura.proveedor.nombre, lineas)
+        html = f"""
+        <div style="background-color: #fff3cd; padding: 15px; margin-top: 10px; border-left: 4px solid #ffc107;">
+            <p><strong>Sugerencia:</strong> {sugerencia}</p>
+            <button hx-post="/facturas/revisar/{pk}/aceptar-sugerencia/" hx-vals='{{"sugerencia": "{sugerencia}"}}' hx-target="#sugerencia-categoria" hx-swap="innerHTML" style="padding: 5px 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Aceptar</button>
+            <button onclick="document.getElementById('sugerencia-categoria').innerHTML=''" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Ignorar</button>
+        </div>
+        """
+        return HttpResponse(html)
+    except Exception as e:
+        return HttpResponse(f"<p>Error al sugerir: {str(e)}</p>")
+
+
+@require_POST
+def aceptar_sugerencia_view(request, pk):
+    factura = get_object_or_404(Factura, pk=pk)
+    nombre = request.POST.get('sugerencia', '').strip()
+
+    if not nombre:
+        return HttpResponse('<p>Error: sugerencia vacía.</p>')
+
+    categoria, _ = CategoriaGasto.objects.get_or_create(nombre=nombre)
+    factura.categoria = categoria
+    factura.save()
+
+    return HttpResponse(
+        f'<div style="background-color:#d4edda; padding:15px; margin-top:10px; border-left:4px solid #28a745;">'
+        f'<p>Categoría <strong>{nombre}</strong> asignada correctamente.</p>'
+        f'</div>'
+    )
