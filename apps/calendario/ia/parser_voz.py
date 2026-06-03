@@ -14,7 +14,7 @@ Los campos del JSON son:
 - inicio (string): YYYY-MM-DD
 - hora_inicio (string|null): HH:MM
 - categoria_sugerida (string)
-- notas (string)
+- anotaciones (string)
 
 IMPORTANTE:
 - La fecha y hora ya han sido interpretadas previamente y se te proporcionan.
@@ -25,11 +25,11 @@ Ejemplos:
 
 Entrada: "ponme reunión con Juan el lunes a las 10"
 Fecha detectada: inicio=2026-06-09, hora_inicio=10:00
-Salida: {"titulo": "Reunión con Juan", "inicio": "2026-06-09", "hora_inicio": "10:00", "categoria_sugerida": "Cliente", "notas": ""}
+Salida: {"titulo": "Reunión con Juan", "inicio": "2026-06-09", "hora_inicio": "10:00", "categoria_sugerida": "Cliente", "anotaciones": ""}
 
 Entrada: "tengo revisión médica el 15 de junio a las 9 y media"
 Fecha detectada: inicio=2026-06-15, hora_inicio=09:30
-Salida: {"titulo": "Revisión médica", "inicio": "2026-06-15", "hora_inicio": "09:30", "categoria_sugerida": "Salud", "notas": ""}
+Salida: {"titulo": "Revisión médica", "inicio": "2026-06-15", "hora_inicio": "09:30", "categoria_sugerida": "Salud", "anotaciones": ""}
 
 Entrada: "el lunes a las 10"
 Fecha detectada: inicio=2026-06-09, hora_inicio=10:00

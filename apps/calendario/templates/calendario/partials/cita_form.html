@@ -1,13 +1,90 @@
-<div style="background:#fff;border-radius:8px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:1rem">
-  <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:1rem">
-    {% if cita %}Editar cita{% else %}Nueva cita{% endif %}
-  </h2>
-     {% if form.non_field_errors %}
-    <div id="error-solapamiento" style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:.75rem;color:#dc2626;font-size:.875rem;margin-bottom:1rem">
+<style>
+  .form-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin-bottom: 1rem;
+  }
+  .form-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 1.25rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .form-field { display: flex; flex-direction: column; gap: .3rem; }
+  .form-field.full { grid-column: span 2; }
+  .form-field label {
+    font-size: .8rem;
+    font-weight: 500;
+    color: #475569;
+  }
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    padding: .5rem .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: .875rem;
+    color: #1e293b;
+    background: #f8fafc;
+    transition: border-color .15s, background .15s;
+  }
+  .form-field input:focus,
+  .form-field select:focus,
+  .form-field textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #fff;
+  }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .form-field .error { font-size: .78rem; color: #dc2626; margin-top: .2rem; }
+  .todo-el-dia-label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .5rem;
+    font-size: .8rem;
+    color: #475569;
+    cursor: pointer;
+  }
+  .form-actions {
+    grid-column: span 2;
+    display: flex;
+    gap: .5rem;
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .error-banner {
+    grid-column: span 2;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    color: #dc2626;
+    font-size: .875rem;
+  }
+</style>
+ 
+<div class="form-card">
+  <div class="form-title">
+    {% if cita %}✏️ Editar cita{% else %}➕ Nueva cita{% endif %}
+  </div>
+ 
+  {% if form.non_field_errors %}
+    <div class="error-banner" style="margin-bottom:1rem">
       ⚠️ {{ form.non_field_errors.0 }}
     </div>
   {% endif %}
-
+ 
   <form
     {% if cita %}
       hx-post="{% url 'calendario:cita_edit' cita.pk %}"
@@ -15,37 +92,71 @@
       hx-post="{% url 'calendario:cita_create' %}"
     {% endif %}
     hx-target="#cita-list"
-    hx-swap="beforeend"
-    style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-
+    hx-swap="beforeend">
+ 
     {% csrf_token %}
-
-    {% for field in form %}
-      <div style="{% if field.name == 'anotaciones' %}grid-column:span 2{% endif %}">
-        <label style="display:block;font-size:.8rem;font-weight:500;color:#475569;margin-bottom:.3rem">
-          {{ field.label }}{% if field.field.required %} *{% endif %}
-        </label>
-        {{ field }}
-        {% if field.errors %}
-          <p style="color:#dc2626;font-size:.8rem;margin-top:.2rem">{{ field.errors.0 }}</p>
+    <div class="form-grid">
+ 
+      {% for field in form %}
+        {% if field.name == 'inicio' %}
+          <div class="form-field">
+            <label>{{ field.label }} *</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+            <label class="todo-el-dia-label">
+              <input type="checkbox" id="todo-el-dia" onchange="if(this.checked) {
+  document.getElementById('id_fin').value = document.getElementById('id_inicio').value;
+  document.getElementById('div-fin').style.opacity = '.4';
+  document.getElementById('id_fin').readOnly = true;
+} else {
+  document.getElementById('div-fin').style.opacity = '1';
+  document.getElementById('id_fin').readOnly = false;
+}">
+              Todo el día
+            </label>
+          </div>
+ 
+        {% elif field.name == 'fin' %}
+          <div class="form-field" id="div-fin">
+            <label>{{ field.label }} *</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+ 
+        {% elif field.name == 'anotaciones' %}
+          <div class="form-field full">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+ 
+        {% else %}
+          <div class="form-field">
+            <label>{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            {{ field }}
+            {% if field.errors %}<p class="error">{{ field.errors.0 }}</p>{% endif %}
+          </div>
         {% endif %}
+      {% endfor %}
+ 
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="btn"
+          {% if form.non_field_errors %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+          {% if cita %}Guardar cambios{% else %}Crear cita{% endif %}
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          hx-get="{% url 'calendario:cita_boton' %}"
+          hx-target="#form-container"
+          hx-swap="innerHTML">
+          Cancelar
+        </button>
       </div>
-    {% endfor %}
-
-
-
-    <div style="grid-column:span 2;display:flex;gap:.5rem;margin-top:.5rem">
-      <button type="submit" class="btn">
-        {% if cita %}Guardar cambios{% else %}Crear cita{% endif %}
-      </button>
-      <button
-        type="button"
-        class="btn btn-ghost"
-        hx-get="{% url 'calendario:cita_boton' %}"
-        hx-target="#form-container"
-        hx-swap="innerHTML">
-        Cancelar
-      </button>
+ 
     </div>
   </form>
 </div>
+ 

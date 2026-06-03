@@ -10,4 +10,6 @@ urlpatterns = [
     path("<int:pk>/borrar/", views.cita_delete, name="cita_delete"),
     path("boton/", views.cita_boton, name="cita_boton"),
     path("desde-texto/", views.cita_desde_texto, name="cita_desde_texto"),
+    path("analizar/<str:fecha_str>/", views.sugerir_reprogramacion,  name="sugerir_reprogramacion"),
+    path("<int:pk>/aceptar/",         views.aceptar_reprogramacion,  name="aceptar_reprogramacion"),
 ]
