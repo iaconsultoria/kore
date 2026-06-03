@@ -31,3 +31,22 @@ def buscar_normativa_por_texto(texto):
         return []
 
     return list(fragmentos)
+
+
+def sugerir_categoria(proveedor_nombre, lineas):
+    """
+    Sugiere una categoría de gasto basada en proveedor y líneas de factura.
+    Retorna el nombre sugerido o None si no puede sugerir.
+    """
+    concepto = lineas[0].concepto if lineas else "gasto"
+
+    prompt = f"Proveedor: {proveedor_nombre}\nConcepto: {concepto}\n\nSugiere una sola categoría de gasto (máximo 5 palabras). Solo la categoría, sin explicación."
+
+    respuesta = litellm.completion(
+        model="openrouter/google/gemma-4-31b-it:free",
+        messages=[{"role": "user", "content": prompt}],
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1",
+    )
+
+    return respuesta.choices[0].message.content.strip()

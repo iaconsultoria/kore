@@ -26,7 +26,10 @@
 
         <p>
             {{ form.categoria.label_tag }}{{ form.categoria }}
+            <button type="button" hx-get="{% url 'sugerir_categoria' factura.pk %}" hx-target="#sugerencia-categoria" style="margin-left: 10px; padding: 5px 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Sugerir categoría</button>
         </p>
+
+        <div id="sugerencia-categoria"></div>
 
         <!-- Contexto normativo -->
         {% if fragmentos_normativa %}
