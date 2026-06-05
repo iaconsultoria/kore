@@ -72,6 +72,8 @@ class Factura(models.Model):
             validar_tamanio_archivo,
         ]
     )
+    extraccion_fallida = models.BooleanField(default=False)
+    error_extraccion = models.TextField(blank=True, default="")
 
     class Meta:
         verbose_name = "Factura"
@@ -126,3 +128,18 @@ class FragmentoNormativa(models.Model):
 
     def __str__(self):
         return f"{self.fuente} — {self.texto[:50]}"
+
+
+class SugerenciaCategoria(models.Model):
+    factura = models.ForeignKey(Factura, on_delete=models.PROTECT)
+    texto_sugerencia = models.TextField()
+    modelo_ia_usado = models.CharField(max_length=200)
+    aceptada = models.BooleanField(null=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Sugerencia de categoría"
+        verbose_name_plural = "Sugerencias de categoría"
+
+    def __str__(self):
+        return f"Sugerencia para Factura {self.factura.pk}: {self.texto_sugerencia}"

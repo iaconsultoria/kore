@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
-from .models import Factura, LineaFactura, CategoriaGasto
+from .models import Factura, LineaFactura, CategoriaGasto, SugerenciaCategoria
 from .forms import RevisionFacturaForm
 from .utils import buscar_normativa_por_texto, sugerir_categoria
 from django.utils import timezone
@@ -10,6 +10,13 @@ from django.views.decorators.http import require_POST
 
 def revisar_extraccion(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
+
+    if factura.extraccion_fallida:
+        return render(request, 'facturas/revisar_extraccion.html', {
+            'factura': factura,
+            'error_extraccion': factura.error_extraccion,
+            'form': None
+        })
 
     # Obtener primera línea o nombre del proveedor para búsqueda normativa
     primera_linea = factura.lineafactura_set.first()
@@ -118,22 +125,30 @@ def sugerir_categoria_view(request, pk):
 
     try:
         sugerencia = sugerir_categoria(factura.proveedor.nombre, lineas)
+
+        registro = SugerenciaCategoria.objects.create(
+            factura=factura,
+            texto_sugerencia=sugerencia,
+            modelo_ia_usado="claude-sonnet-4-20250514",
+            aceptada=None
+        )
+
         html = f"""
         <div style="background-color: #fff3cd; padding: 15px; margin-top: 10px; border-left: 4px solid #ffc107;">
             <p><strong>Sugerencia:</strong> {sugerencia}</p>
-            <button hx-post="/facturas/revisar/{pk}/aceptar-sugerencia/" hx-vals='{{"sugerencia": "{sugerencia}"}}' hx-target="#sugerencia-categoria" hx-swap="innerHTML" style="padding: 5px 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Aceptar</button>
-            <button onclick="document.getElementById('sugerencia-categoria').innerHTML=''" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Ignorar</button>
+            <button hx-post="/facturas/revisar/{pk}/aceptar-sugerencia/" hx-vals='{{"sugerencia": "{sugerencia}", "sugerencia_id": "{registro.pk}"}}' hx-target="#sugerencia-categoria" hx-swap="innerHTML" style="padding: 5px 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Aceptar</button>
+            <button hx-post="/facturas/revisar/{pk}/ignorar-sugerencia/" hx-vals='{{"sugerencia_id": "{registro.pk}"}}' hx-target="#sugerencia-categoria" hx-swap="innerHTML" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Ignorar</button>
         </div>
         """
         return HttpResponse(html)
     except Exception as e:
         return HttpResponse(f"<p>Error al sugerir: {str(e)}</p>")
 
-
 @require_POST
 def aceptar_sugerencia_view(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     nombre = request.POST.get('sugerencia', '').strip()
+    sugerencia_id = request.POST.get('sugerencia_id')
 
     if not nombre:
         return HttpResponse('<p>Error: sugerencia vacía.</p>')
@@ -142,8 +157,19 @@ def aceptar_sugerencia_view(request, pk):
     factura.categoria = categoria
     factura.save()
 
+    if sugerencia_id:
+        SugerenciaCategoria.objects.filter(pk=sugerencia_id).update(aceptada=True)
+
     return HttpResponse(
         f'<div style="background-color:#d4edda; padding:15px; margin-top:10px; border-left:4px solid #28a745;">'
         f'<p>Categoría <strong>{nombre}</strong> asignada correctamente.</p>'
         f'</div>'
     )
+
+
+@require_POST
+def ignorar_sugerencia_view(request, pk):
+    sugerencia_id = request.POST.get('sugerencia_id')
+    if sugerencia_id:
+            SugerenciaCategoria.objects.filter(pk=sugerencia_id).update(aceptada=False)
+    return HttpResponse("")

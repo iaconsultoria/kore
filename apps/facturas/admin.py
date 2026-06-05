@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import Factura, LineaFactura, Proveedor, CategoriaGasto, FragmentoNormativa
-
+from .models import Factura, LineaFactura, Proveedor, CategoriaGasto, FragmentoNormativa, SugerenciaCategoria
 
 class LineaFacturaInline(admin.TabularInline):
     model = LineaFactura
@@ -29,3 +28,11 @@ class CategoriaGastoAdmin(admin.ModelAdmin):
 @admin.register(FragmentoNormativa)
 class FragmentoNormativaAdmin(admin.ModelAdmin):
     list_display = ('fuente', 'texto')
+
+
+@admin.register(SugerenciaCategoria)
+class SugerenciaCategoriaAdmin(admin.ModelAdmin):
+    list_display = ('factura', 'texto_sugerencia', 'modelo_ia_usado', 'aceptada', 'fecha')
+    list_filter = ('aceptada', 'fecha')
+    search_fields = ('texto_sugerencia',)
+    readonly_fields = ('fecha',)
