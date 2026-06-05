@@ -10,7 +10,7 @@
       e.detail.headers["X-CSRFToken"] = document.querySelector('meta[name="csrf-token"]').content;
     });
   </script>
-<style>
+  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
     h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
@@ -48,32 +48,44 @@
 </head>
 <body>
   <h1>📅 Calendario</h1>
-    <a href="{% url 'calendario:sugerir_reprogramacion' today %}" class="btn" style="background:#5e8cf1;margin-left:.5rem">
+
+  <a href="{% url 'calendario:sugerir_reprogramacion' today %}" class="btn" style="background:#5e8cf1;">
     📊 Analizar agenda
   </a>
+
   <div style="margin-top: 2rem;">
 
-  <!-- Campo IA -->
-  <form hx-post="{% url 'calendario:cita_desde_texto' %}"
+    <!-- Campo IA con voz -->
+    <form id="form-voz"
+          hx-post="{% url 'calendario:cita_desde_texto' %}"
+          hx-target="#form-container"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="text"
+             id="id-texto-voz"
+             name="texto"
+             placeholder="Describe tu cita..." />
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button type="submit" class="btn">Describe tu cita...</button>
+        <button type="button" id="btn-hablar" class="btn btn-ghost" onclick="activarVoz()">
+          🎙️ Hablar
+        </button>
+      </div>
+      <p id="aviso-voz" style="display:none;font-size:.8rem;color:#dc2626;margin-top:.3rem">
+        Tu navegador no soporta entrada de voz — usa el campo de texto.
+      </p>
+    </form>
+
+    <!-- Formulario / botón nueva cita -->
+    <div id="form-container" style="margin-top:1rem;">
+      <button
+        class="btn"
+        hx-get="{% url 'calendario:cita_create' %}"
         hx-target="#form-container"
         hx-swap="innerHTML">
-    {% csrf_token %}
-    <input type="text"
-           name="texto"
-           placeholder="Describe tu cita..."
-           style="border:1px solid #cbd5e1; border-radius:6px; padding:.45rem .75rem; width:100%; margin-bottom:.5rem;" />
-    <button type="submit" class="btn">Describe tu cita...</button>
-  </form>
-
-  <!-- Formulario / botón nueva cita -->
-  <div id="form-container" style="margin-top:1rem;">
-    <button
-      class="btn"
-      hx-get="{% url 'calendario:cita_create' %}"
-      hx-target="#form-container"
-      hx-swap="innerHTML">
-      + Nueva cita
-    </button>
+        + Nueva cita
+      </button>
+    </div>
   </div>
 
   <table>
@@ -103,5 +115,45 @@
     hx-target="#form-container"
     hx-swap="innerHTML">
   </div>
+
+  <script>
+function activarVoz() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    document.getElementById("aviso-voz").style.display = "block";
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "es-ES";
+  recognition.interimResults = false;
+
+  const btn = document.getElementById("btn-hablar");
+  btn.textContent = "🔴 Escuchando...";
+  btn.disabled = true;
+
+  recognition.onresult = (e) => {
+    const texto = e.results[0][0].transcript;
+    console.log("Texto reconocido:", texto);
+    document.getElementById("id-texto-voz").value = texto;
+    document.getElementById("form-voz").requestSubmit();
+  };
+
+  recognition.onerror = (e) => {
+    console.log("Error de voz:", e.error);
+  };
+
+  recognition.onend = () => {
+    console.log("Reconocimiento terminado");
+    btn.textContent = "🎙️ Hablar";
+    btn.disabled = false;
+  };
+
+  recognition.start();
+}
+
+  </script>
+
 </body>
 </html>
