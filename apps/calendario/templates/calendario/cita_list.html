@@ -122,11 +122,14 @@ let chunks = [];
 
 async function toggleGrabacion() {
   const btn = document.getElementById("btn-hablar");
+  const aviso = document.getElementById("aviso-voz");
 
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
     return;
   }
+
+  aviso.style.display = "none";
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -137,33 +140,56 @@ async function toggleGrabacion() {
       if (e.data.size > 0) chunks.push(e.data);
     };
 
-    mediaRecorder.onstop = async () => {
-      btn.textContent = "🎙️ Hablar";
-      btn.disabled = false;
-      stream.getTracks().forEach(t => t.stop());
+mediaRecorder.onstop = async () => {
+  btn.textContent = "⏳ Transcribiendo...";
+  btn.disabled = true;
+  stream.getTracks().forEach(t => t.stop());
 
+  await new Promise(r => requestAnimationFrame(r));
+
+  const fetchPromise = fetch("/calendario/transcribir/", {
+    method: "POST",
+    body: (() => {
       const blob = new Blob(chunks, { type: "audio/webm" });
       const formData = new FormData();
       formData.append("audio", blob, "audio.webm");
-      formData.append("csrfmiddlewaretoken", document.querySelector('[name=csrfmiddlewaretoken]').value);
+      formData.append(
+        "csrfmiddlewaretoken",
+        document.querySelector("[name=csrfmiddlewaretoken]").value
+      );
+      return formData;
+    })(),
+  });
 
-      const response = await fetch("/calendario/transcribir/", {
-        method: "POST",
-        body: formData,
-      });
+  // Mínimo 1 segundo visible para que el usuario lo vea
+  const [response] = await Promise.all([
+    fetchPromise,
+    new Promise(r => setTimeout(r, 1000)),
+  ]);
 
-      const data = await response.json();
-      if (data.texto) {
-        document.getElementById("id-texto-voz").value = data.texto;
-        document.getElementById("form-voz").requestSubmit();
-      }
-    };
+  try {
+    const data = await response.json();
+    if (data.error) {
+      aviso.textContent = data.error;
+      aviso.style.display = "block";
+    } else if (data.texto) {
+      document.getElementById("id-texto-voz").value = data.texto;
+      document.getElementById("form-voz").requestSubmit();
+    }
+  } catch (err) {
+    aviso.textContent = "Error de red al transcribir, inténtalo de nuevo.";
+    aviso.style.display = "block";
+    console.error("Error transcripción:", err);
+  } finally {
+    btn.textContent = "🎙️ Hablar";
+    btn.disabled = false;
+  }
+};
 
     mediaRecorder.start();
     btn.textContent = "⏹️ Parar";
     btn.disabled = false;
 
-    // Parar automáticamente a los 10 segundos
     setTimeout(() => {
       if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
@@ -171,10 +197,11 @@ async function toggleGrabacion() {
     }, 10000);
 
   } catch (err) {
-    document.getElementById("aviso-voz").style.display = "block";
+    aviso.textContent = "No se ha podido acceder al micrófono.";
+    aviso.style.display = "block";
     console.error("Error micrófono:", err);
   }
 }
-</script> 
+</script>
 </body>
 </html>
