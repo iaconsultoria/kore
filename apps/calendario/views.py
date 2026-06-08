@@ -141,3 +141,31 @@ def aceptar_reprogramacion(request, pk):
     cita.fin    = cita.fin + timedelta(days=1)
     cita.save()
     return HttpResponse("")
+
+import json
+import tempfile
+from faster_whisper import WhisperModel
+
+def transcribir(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    audio = request.FILES.get("audio")
+    if not audio:
+        return HttpResponse(status=400)
+
+    # Guardar el audio en un archivo temporal
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+        for chunk in audio.chunks():
+            tmp.write(chunk)
+        tmp_path = tmp.name
+
+    # Transcribir con faster-whisper
+    model = WhisperModel("small", device="cpu", compute_type="int8")
+    segments, _ = model.transcribe(tmp_path, language="es")
+    texto = " ".join([s.text for s in segments])
+
+    return HttpResponse(
+        json.dumps({"texto": texto}),
+        content_type="application/json"
+    )

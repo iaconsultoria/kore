@@ -12,4 +12,5 @@ urlpatterns = [
     path("desde-texto/", views.cita_desde_texto, name="cita_desde_texto"),
     path("analizar/<str:fecha_str>/", views.sugerir_reprogramacion,  name="sugerir_reprogramacion"),
     path("<int:pk>/aceptar/",         views.aceptar_reprogramacion,  name="aceptar_reprogramacion"),
+    path("transcribir/", views.transcribir, name="transcribir"),
 ]
