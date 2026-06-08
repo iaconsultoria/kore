@@ -6,6 +6,10 @@ from .utils import buscar_normativa_por_texto, sugerir_categoria
 from django.utils import timezone
 from datetime import timedelta
 from django.views.decorators.http import require_POST
+import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
 
 def revisar_extraccion(request, pk):
@@ -173,3 +177,86 @@ def ignorar_sugerencia_view(request, pk):
     if sugerencia_id:
             SugerenciaCategoria.objects.filter(pk=sugerencia_id).update(aceptada=False)
     return HttpResponse("")
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mcp_endpoint(request):
+    """Endpoint MCP que maneja llamadas a herramientas."""
+    try:
+        body = json.loads(request.body)
+
+        tool_name = body.get("name")
+        arguments = body.get("arguments", {})
+
+        if tool_name == "listar_facturas":
+            limit = arguments.get("limit", 10)
+            facturas = Factura.objects.select_related("proveedor", "categoria").order_by("-fecha_emision")[:limit]
+            resultado = []
+            for f in facturas:
+                resultado.append({
+                    "id": f.id,
+                    "numero_factura": f.numero_factura,
+                    "proveedor": f.proveedor.nombre,
+                    "fecha_emision": f.fecha_emision.isoformat(),
+                    "total": float(f.total),
+                    "categoria": f.categoria.nombre if f.categoria else None
+                })
+            return JsonResponse({"resultado": resultado})
+
+        elif tool_name == "buscar_por_proveedor":
+            nombre = arguments.get("nombre", "")
+            facturas = Factura.objects.filter(
+                proveedor__nombre__icontains=nombre
+            ).select_related("proveedor", "categoria").order_by("-fecha_emision")
+            resultado = []
+            for f in facturas:
+                resultado.append({
+                    "id": f.id,
+                    "numero_factura": f.numero_factura,
+                    "proveedor": f.proveedor.nombre,
+                    "fecha_emision": f.fecha_emision.isoformat(),
+                    "total": float(f.total),
+                    "categoria": f.categoria.nombre if f.categoria else None
+                })
+            return JsonResponse({"resultado": resultado})
+
+        elif tool_name == "resumen_fiscal":
+            from django.db.models import Sum
+            mes = arguments.get("mes")
+            anio = arguments.get("anio")
+
+            # Total de facturas del mes
+            facturas_mes = Factura.objects.filter(
+                fecha_emision__month=mes,
+                fecha_emision__year=anio
+            )
+            total_facturas = facturas_mes.count()
+
+            # Total IVA soportado
+            total_iva = facturas_mes.aggregate(Sum('iva_total'))['iva_total__sum'] or 0
+
+            # Categoría con más gasto
+            categoria_top = facturas_mes.filter(
+                categoria__isnull=False
+            ).values('categoria__nombre').annotate(
+                total=Sum('base_imponible')
+            ).order_by('-total').first()
+
+            resultado = {
+                "mes": mes,
+                "anio": anio,
+                "total_facturas": total_facturas,
+                "total_iva_soportado": float(total_iva),
+                "categoria_mas_gasto": categoria_top['categoria__nombre'] if categoria_top else None,
+                "gasto_categoria_top": float(categoria_top['total']) if categoria_top else 0
+            }
+            return JsonResponse({"resultado": resultado})
+
+        else:
+            return JsonResponse({"error": f"Herramienta {tool_name} no encontrada"}, status=400)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido"}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
