@@ -179,6 +179,58 @@ def ignorar_sugerencia_view(request, pk):
     return HttpResponse("")
 
 
+def validar_parametros(tool_name, arguments):
+    """Valida parámetros según la herramienta."""
+    errores = []
+
+    if tool_name == "listar_facturas":
+        limit = arguments.get("limit", 10)
+        offset = arguments.get("offset", 0)
+        if not isinstance(limit, int) or limit < 1 or limit > 100:
+            errores.append("limit debe ser un entero entre 1 y 100")
+        if not isinstance(offset, int) or offset < 0:
+            errores.append("offset debe ser un entero >= 0")
+
+    elif tool_name == "buscar_por_proveedor":
+        nombre = arguments.get("nombre")
+        if not nombre or not isinstance(nombre, str) or len(nombre.strip()) == 0:
+            errores.append("nombre debe ser una cadena no vacía")
+
+        fecha_desde = arguments.get("fecha_desde")
+        if fecha_desde and not isinstance(fecha_desde, str):
+            errores.append("fecha_desde debe ser string formato YYYY-MM-DD")
+
+        fecha_hasta = arguments.get("fecha_hasta")
+        if fecha_hasta and not isinstance(fecha_hasta, str):
+            errores.append("fecha_hasta debe ser string formato YYYY-MM-DD")
+
+        total_minimo = arguments.get("total_minimo")
+        if total_minimo is not None and not isinstance(total_minimo, (int, float)):
+            errores.append("total_minimo debe ser un número")
+
+        total_maximo = arguments.get("total_maximo")
+        if total_maximo is not None and not isinstance(total_maximo, (int, float)):
+            errores.append("total_maximo debe ser un número")
+
+        categoria = arguments.get("categoria")
+        if categoria and not isinstance(categoria, str):
+            errores.append("categoria debe ser string")
+
+    elif tool_name == "obtener_factura":
+        id_factura = arguments.get("id")
+        if not isinstance(id_factura, int) or id_factura < 1:
+            errores.append("id debe ser un entero > 0")
+
+    elif tool_name == "resumen_fiscal":
+        mes = arguments.get("mes")
+        anio = arguments.get("anio")
+        if not isinstance(mes, int) or mes < 1 or mes > 12:
+            errores.append("mes debe ser un entero entre 1 y 12")
+        if not isinstance(anio, int) or anio < 1950 or anio > 2100:
+            errores.append("anio debe ser un entero entre 1950 y 2100")
+
+    return errores
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def mcp_endpoint(request):
@@ -189,9 +241,15 @@ def mcp_endpoint(request):
         tool_name = body.get("name")
         arguments = body.get("arguments", {})
 
+        # Validar parámetros
+        errores = validar_parametros(tool_name, arguments)
+        if errores:
+            return JsonResponse({"error": ", ".join(errores)}, status=400)
+
         if tool_name == "listar_facturas":
             limit = arguments.get("limit", 10)
-            facturas = Factura.objects.select_related("proveedor", "categoria").order_by("-fecha_emision")[:limit]
+            offset = arguments.get("offset", 0)
+            facturas = Factura.objects.select_related("proveedor", "categoria").order_by("-fecha_emision")[offset:offset+limit]
             resultado = []
             for f in facturas:
                 resultado.append({
@@ -206,9 +264,28 @@ def mcp_endpoint(request):
 
         elif tool_name == "buscar_por_proveedor":
             nombre = arguments.get("nombre", "")
-            facturas = Factura.objects.filter(
+            fecha_desde = arguments.get("fecha_desde")
+            fecha_hasta = arguments.get("fecha_hasta")
+            total_minimo = arguments.get("total_minimo")
+            total_maximo = arguments.get("total_maximo")
+            categoria = arguments.get("categoria")
+
+            query = Factura.objects.filter(
                 proveedor__nombre__icontains=nombre
-            ).select_related("proveedor", "categoria").order_by("-fecha_emision")
+            )
+
+            if fecha_desde:
+                query = query.filter(fecha_emision__gte=fecha_desde)
+            if fecha_hasta:
+                query = query.filter(fecha_emision__lte=fecha_hasta)
+            if total_minimo is not None:
+                query = query.filter(total__gte=total_minimo)
+            if total_maximo is not None:
+                query = query.filter(total__lte=total_maximo)
+            if categoria:
+                query = query.filter(categoria__nombre__icontains=categoria)
+
+            facturas = query.select_related("proveedor", "categoria").order_by("-fecha_emision")
             resultado = []
             for f in facturas:
                 resultado.append({
@@ -220,6 +297,36 @@ def mcp_endpoint(request):
                     "categoria": f.categoria.nombre if f.categoria else None
                 })
             return JsonResponse({"resultado": resultado})
+
+        elif tool_name == "obtener_factura":
+            id_factura = arguments.get("id")
+            try:
+                factura = Factura.objects.get(pk=id_factura)
+                lineas = factura.lineafactura_set.all()
+
+                resultado = {
+                    "id": factura.id,
+                    "numero_factura": factura.numero_factura,
+                    "proveedor": factura.proveedor.nombre,
+                    "fecha_emision": factura.fecha_emision.isoformat(),
+                    "fecha_vencimiento": factura.fecha_vencimiento.isoformat() if factura.fecha_vencimiento else None,
+                    "base_imponible": float(factura.base_imponible),
+                    "iva_total": float(factura.iva_total),
+                    "total": float(factura.total),
+                    "categoria": factura.categoria.nombre if factura.categoria else None,
+                    "lineas": [
+                        {
+                            "concepto": linea.concepto,
+                            "cantidad": float(linea.cantidad),
+                            "precio_unitario": float(linea.precio_unitario),
+                            "iva_porcentaje": linea.iva_porcentaje
+                        }
+                        for linea in lineas
+                    ]
+                }
+                return JsonResponse({"resultado": resultado})
+            except Factura.DoesNotExist:
+                return JsonResponse({"error": "Factura no encontrada"}, status=404)
 
         elif tool_name == "resumen_fiscal":
             from django.db.models import Sum
