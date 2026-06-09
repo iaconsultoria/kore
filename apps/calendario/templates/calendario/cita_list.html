@@ -67,7 +67,7 @@
              placeholder="Describe tu cita..." />
       <div style="display:flex;gap:.5rem;margin-top:.5rem">
         <button type="submit" class="btn">Describe tu cita...</button>
-        <button type="button" id="btn-hablar" class="btn btn-ghost" onclick="activarVoz()">
+        <button type="button" id="btn-hablar" class="btn btn-ghost" onclick="toggleGrabacion()">
           🎙️ Hablar
         </button>
       </div>
@@ -116,44 +116,92 @@
     hx-swap="innerHTML">
   </div>
 
-  <script>
-function activarVoz() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+<script>
+let mediaRecorder = null;
+let chunks = [];
 
-  if (!SpeechRecognition) {
-    document.getElementById("aviso-voz").style.display = "block";
+async function toggleGrabacion() {
+  const btn = document.getElementById("btn-hablar");
+  const aviso = document.getElementById("aviso-voz");
+
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
     return;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = "es-ES";
-  recognition.interimResults = false;
+  aviso.style.display = "none";
 
-  const btn = document.getElementById("btn-hablar");
-  btn.textContent = "🔴 Escuchando...";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+mediaRecorder.onstop = async () => {
+  btn.textContent = "⏳ Transcribiendo...";
   btn.disabled = true;
+  stream.getTracks().forEach(t => t.stop());
 
-  recognition.onresult = (e) => {
-    const texto = e.results[0][0].transcript;
-    console.log("Texto reconocido:", texto);
-    document.getElementById("id-texto-voz").value = texto;
-    document.getElementById("form-voz").requestSubmit();
-  };
+  await new Promise(r => requestAnimationFrame(r));
 
-  recognition.onerror = (e) => {
-    console.log("Error de voz:", e.error);
-  };
+  const fetchPromise = fetch("/calendario/transcribir/", {
+    method: "POST",
+    body: (() => {
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("audio", blob, "audio.webm");
+      formData.append(
+        "csrfmiddlewaretoken",
+        document.querySelector("[name=csrfmiddlewaretoken]").value
+      );
+      return formData;
+    })(),
+  });
 
-  recognition.onend = () => {
-    console.log("Reconocimiento terminado");
+  // Mínimo 1 segundo visible para que el usuario lo vea
+  const [response] = await Promise.all([
+    fetchPromise,
+    new Promise(r => setTimeout(r, 1000)),
+  ]);
+
+  try {
+    const data = await response.json();
+    if (data.error) {
+      aviso.textContent = data.error;
+      aviso.style.display = "block";
+    } else if (data.texto) {
+      document.getElementById("id-texto-voz").value = data.texto;
+      document.getElementById("form-voz").requestSubmit();
+    }
+  } catch (err) {
+    aviso.textContent = "Error de red al transcribir, inténtalo de nuevo.";
+    aviso.style.display = "block";
+    console.error("Error transcripción:", err);
+  } finally {
     btn.textContent = "🎙️ Hablar";
     btn.disabled = false;
-  };
+  }
+};
 
-  recognition.start();
+    mediaRecorder.start();
+    btn.textContent = "⏹️ Parar";
+    btn.disabled = false;
+
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }, 10000);
+
+  } catch (err) {
+    aviso.textContent = "No se ha podido acceder al micrófono.";
+    aviso.style.display = "block";
+    console.error("Error micrófono:", err);
+  }
 }
-
-  </script>
-
+</script>
 </body>
 </html>
