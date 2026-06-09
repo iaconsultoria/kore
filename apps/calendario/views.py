@@ -192,7 +192,7 @@ def transcribir(request):
 
         import json
         
-from .mcp_server import listar_citas, detectar_sobrecarga, resumen_dia
+from .mcp.mcp_server import listar_citas, detectar_sobrecarga, resumen_dia
 from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt

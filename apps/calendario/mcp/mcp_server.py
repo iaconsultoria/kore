@@ -1,6 +1,6 @@
 from datetime import date
-from .models import Cita
-from .ia.analizador import analizar_dia
+from ..models import Cita
+from ..ia.analizador import analizar_dia
 
 
 def listar_citas(fecha: str) -> dict:
