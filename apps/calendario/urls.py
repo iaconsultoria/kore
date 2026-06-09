@@ -13,4 +13,5 @@ urlpatterns = [
     path("analizar/<str:fecha_str>/", views.sugerir_reprogramacion,  name="sugerir_reprogramacion"),
     path("<int:pk>/aceptar/",         views.aceptar_reprogramacion,  name="aceptar_reprogramacion"),
     path("transcribir/", views.transcribir, name="transcribir"),
+    path("mcp/", views.mcp, name="mcp"),
 ]

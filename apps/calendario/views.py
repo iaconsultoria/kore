@@ -190,3 +190,35 @@ def transcribir(request):
         except OSError:
             pass
 
+        import json
+        
+from .mcp.mcp_server import listar_citas, detectar_sobrecarga, resumen_dia
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def mcp(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    body = json.loads(request.body)
+    herramienta = body.get("tool")
+    params = body.get("params", {})
+
+    if herramienta == "listar_citas":
+        resultado = listar_citas(params.get("fecha"))
+    elif herramienta == "detectar_sobrecarga":
+        resultado = detectar_sobrecarga(params.get("fecha"))
+    elif herramienta == "resumen_dia":
+        resultado = resumen_dia(params.get("fecha"))
+    else:
+        return HttpResponse(
+            json.dumps({"error": f"Herramienta '{herramienta}' no encontrada"}),
+            content_type="application/json",
+            status=404,
+        )
+
+    return HttpResponse(
+        json.dumps(resultado),
+        content_type="application/json",
+    )
+
