@@ -2,6 +2,7 @@ import os
 import litellm
 from pgvector.django import CosineDistance
 from .models import FragmentoNormativa
+import requests
 
 UMBRAL_DISTANCIA = 0.70
 
@@ -50,3 +51,26 @@ def sugerir_categoria(proveedor_nombre, lineas):
     )
 
     return respuesta.choices[0].message.content.strip()
+
+
+def obtener_citas_del_mismo_dia(fecha_emision):
+    """
+    Llama al MCP de calendario para buscar citas del mismo día.
+    Si el MCP no responde, retorna lista vacía (fallo silencioso).
+    """
+    try:
+        fecha_str = fecha_emision.isoformat()
+        respuesta = requests.post(
+            'http://localhost:8000/calendario/mcp/',
+            json={
+                'name': 'listar_citas',
+                'arguments': {'fecha': fecha_str}
+            },
+            timeout=2
+        )
+        if respuesta.status_code == 200:
+            datos = respuesta.json()
+            return datos.get('resultado', {}).get('citas', [])
+    except Exception:
+        pass  # Fallo silencioso
+    return []
