@@ -19,13 +19,20 @@ def cita_list(request):
     try:
         response = requests.post(
             "http://127.0.0.1:8000/facturas/mcp/",
-            json={"tool": "facturas_del_dia", "params": {"fecha": today}},
+            json={
+                "name": "resumen_fiscal",
+                "arguments": {
+                    "mes": date.today().month,
+                    "anio": date.today().year,
+                }
+            },
             timeout=2,
         )
         if response.status_code == 200:
-            data = response.json()
-            if data.get("num_facturas", 0) > 0:
-                aviso_facturas = f"Ese día hay {data['num_facturas']} factura{'s' if data['num_facturas'] > 1 else ''} registrada{'s' if data['num_facturas'] > 1 else ''} (total {data['total']} €)."
+            data = response.json().get("resultado", {})
+            total_facturas = data.get("total_facturas", 0)
+            if total_facturas > 0:
+                aviso_facturas = f"Este mes hay {total_facturas} factura{'s' if total_facturas > 1 else ''} registrada{'s' if total_facturas > 1 else ''}."
     except Exception:
         pass
     return render(request, "calendario/cita_list.html", {
