@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
 import re
-import json  
-from litellm import completion  
+import json
+import time
+import unicodedata
+from litellm import completion
+from litellm.exceptions import RateLimitError
 from django.conf import settings
 
 SYSTEM_PROMPT = """
@@ -45,7 +48,13 @@ DIAS_SEMANA = {
     "sabado": 5,
     "domingo": 6,
 }
-import unicodedata
+
+MESES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+}
+
 
 def quitar_tildes(texto: str) -> str:
     return ''.join(
@@ -55,36 +64,102 @@ def quitar_tildes(texto: str) -> str:
 
 
 def extraer_fecha(texto: str):
-    print(">>> extraer_fecha llamada con:", repr(texto))  
-    texto = quitar_tildes(texto.lower()) 
+    print(">>> extraer_fecha llamada con:", repr(texto))
+    texto = quitar_tildes(texto.lower())
     ahora = datetime.now()
     fecha = None
     hora = None
 
-    # Detectar día de la semana
-    for nombre, numero in DIAS_SEMANA.items():
-        if nombre in texto:
-            dias_hasta = (numero - ahora.weekday()) % 7
-            if dias_hasta == 0:
-                dias_hasta = 7
-            fecha = ahora + timedelta(days=dias_hasta)
-            break
+    # ── Fechas relativas ──────────────────────────────────────────────────
+    if "pasado manana" in texto:
+        fecha = ahora + timedelta(days=2)
+    elif "manana" in texto:
+        fecha = ahora + timedelta(days=1)
+    elif "hoy" in texto:
+        fecha = ahora
+    elif "en dos semanas" in texto or "dentro de dos semanas" in texto:
+        fecha = ahora + timedelta(weeks=2)
+    elif "en una semana" in texto or "dentro de una semana" in texto:
+        fecha = ahora + timedelta(weeks=1)
+    elif "la semana que viene" in texto or "la proxima semana" in texto:
+        dias_hasta_lunes = (7 - ahora.weekday()) % 7 or 7
+        fecha = ahora + timedelta(days=dias_hasta_lunes)
 
-    # Detectar hora — "a las" o "a la" es OBLIGATORIO
-    match_hora = re.search(
-        r"(?:a las|a la)\s*(\d{1,2})(?::(\d{2}))?",
-        texto
-    )
+    # ── Día de la semana (solo si no se detectó fecha relativa) ──────────
+    if fecha is None:
+        for nombre, numero in DIAS_SEMANA.items():
+            if nombre in texto:
+                dias_hasta = (numero - ahora.weekday()) % 7
+                if dias_hasta == 0:
+                    dias_hasta = 7
+                fecha = ahora + timedelta(days=dias_hasta)
+                break
 
-    if match_hora:
-        hora_num = int(match_hora.group(1))
-        if 0 <= hora_num <= 23:
-            minutos = match_hora.group(2) or "00"
-            hora = f"{hora_num:02}:{minutos}"
+    # ── Fecha explícita "dd de mes" ───────────────────────────────────────
+    if fecha is None:
+        m = re.search(r"(\d{1,2})\s+de\s+([a-z]+)", texto)
+        if m:
+            mes = MESES.get(quitar_tildes(m.group(2)))
+            if mes:
+                dia = int(m.group(1))
+                anio = ahora.year
+                candidata = datetime(anio, mes, dia)
+                if candidata.date() < ahora.date():
+                    candidata = datetime(anio + 1, mes, dia)
+                fecha = candidata
+
+    # ── Fecha explícita dd/mm(/yyyy) ──────────────────────────────────────
+    if fecha is None:
+        m = re.search(r"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?", texto)
+        if m:
+            anio = int(m.group(3)) if m.group(3) else ahora.year
+            if anio < 100:
+                anio += 2000
+            fecha = datetime(anio, int(m.group(2)), int(m.group(1)))
+
+    # ── Hora ──────────────────────────────────────────────────────────────
+    if "mediodia" in texto:
+        hora = "12:00"
+    elif "medianoche" in texto:
+        hora = "00:00"
+    elif "por la manana" in texto and not re.search(r"(?:a las|a la)\s*\d", texto):
+        hora = "09:00"
+    elif "por la tarde" in texto and not re.search(r"(?:a las|a la)\s*\d", texto):
+        hora = "16:00"
+    elif "por la noche" in texto and not re.search(r"(?:a las|a la)\s*\d", texto):
+        hora = "20:00"
+    else:
+        m = re.search(r"(?:a las|a la)\s*(\d{1,2})(?::(\d{2}))?", texto)
+        if m:
+            hora_num = int(m.group(1))
+            if 0 <= hora_num <= 23:
+                minutos = m.group(2) or "00"
+                hora = f"{hora_num:02}:{minutos}"
 
     inicio = fecha.strftime("%Y-%m-%d") if fecha else None
-
     return inicio, hora
+
+
+def _completion_con_retry(model, messages, api_key, intentos=3):
+    modelos = [model, "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"]
+    for modelo_actual in modelos:
+        for i in range(intentos):
+            try:
+                return completion(model=modelo_actual, messages=messages, api_key=api_key)
+            except RateLimitError as e:
+                if i < intentos - 1:
+                    try:
+                        import re as _re
+                        segundos = int(_re.search(r'"retry_after_seconds":(\d+)', str(e)).group(1))
+                    except Exception:
+                        segundos = 30
+                    print(f"Rate limit en {modelo_actual}, esperando {segundos}s (intento {i+1}/{intentos})")
+                    time.sleep(segundos)
+                else:
+                    print(f"Rate limit agotado en {modelo_actual}, probando siguiente modelo...")
+                    break
+    raise Exception("Todos los modelos están saturados, inténtalo en unos minutos.")
+
 
 def parsear_texto_a_cita(texto: str) -> dict:
     inicio, hora_inicio = extraer_fecha(texto)
@@ -97,8 +172,8 @@ Fecha detectada automáticamente:
 NO recalcules estas fechas.
 """.strip()
 
-    response = completion(
-        model="openrouter/z-ai/glm-4.5-air:free",
+    response = _completion_con_retry(
+        model="openrouter/openai/gpt-oss-120b:free",
         messages=[
             {
                 "role": "system",
@@ -116,13 +191,11 @@ NO recalcules estas fechas.
 
     if contenido.startswith("```"):
         contenido = contenido.split("```")[1]
-
         if contenido.startswith("json"):
             contenido = contenido[4:]
 
     resultado = json.loads(contenido)
 
-    # FORZAR fecha/hora correctas
     resultado["inicio"] = inicio
     resultado["hora_inicio"] = hora_inicio
 

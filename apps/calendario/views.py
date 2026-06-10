@@ -9,12 +9,28 @@ from litellm import completion
 from .models import Cita
 from .forms import CitaForm
 from .ia.analizador import analizar_dia
+import requests
 
 
 def cita_list(request):
     citas = Cita.objects.select_related("categoria").all()
+    today = date.today().isoformat()
+    aviso_facturas = None
+    try:
+        response = requests.post(
+            "http://127.0.0.1:8000/facturas/mcp/",
+            json={"tool": "facturas_del_dia", "params": {"fecha": today}},
+            timeout=2,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("num_facturas", 0) > 0:
+                aviso_facturas = f"Ese día hay {data['num_facturas']} factura{'s' if data['num_facturas'] > 1 else ''} registrada{'s' if data['num_facturas'] > 1 else ''} (total {data['total']} €)."
+    except Exception:
+        pass
     return render(request, "calendario/cita_list.html", {
         "citas": citas,
+        "aviso_facturas": aviso_facturas,
         "today": date.today().isoformat(),
     })
 
