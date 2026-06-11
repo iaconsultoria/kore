@@ -16,8 +16,29 @@
       <span style="color:#94a3b8">—</span>
     {% endif %}
   </td>
-  <td>{{ cita.get_prioridad_display }}</td>
-  <td style="display:flex;gap:.5rem">
+<td>
+  {% with p=cita.prioridad %}
+    <span style="
+      display:inline-block;
+      font-size:.75rem;
+      font-weight:500;
+      padding:2px 8px;
+      border-radius:99px;
+      {% if p == 1 %}background:#fee2e2;color:#991b1b;
+      {% elif p == 2 %}background:#fef9c3;color:#854d0e;
+      {% else %}background:#dcfce7;color:#166534;{% endif %}
+    ">{{ cita.get_prioridad_display }}</span>
+  {% endwith %}
+</td>
+<td style="color:#64748b;font-size:.85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+  {% if cita.anotaciones %}
+    {{ cita.anotaciones }}
+  {% else %}
+    <span style="color:#94a3b8">—</span>
+  {% endif %}
+</td>
+<td>
+  <div style="display:flex;gap:.5rem">
     <button
       class="btn btn-ghost"
       hx-get="{% url 'calendario:cita_edit' cita.pk %}"
@@ -33,5 +54,6 @@
       hx-confirm="¿Borrar «{{ cita.titulo }}»?">
       Borrar
     </button>
-  </td>
+  </div>
+</td>
 </tr>

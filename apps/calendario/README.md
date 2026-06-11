@@ -29,13 +29,13 @@ La vista `cita_desde_texto` acepta una frase en español mediante POST y devuelv
 | `"Llamada con cliente el martes a las 15:30"` | título: *Llamada con cliente*, día: próximo martes, hora: 15:30 |
 | `"Cita el 12/07 a las 9"` | título: *Cita*, fecha: 12/07 del año en curso, hora: 09:00 |
 | `"Revisión el viernes"` | título: *Revisión*, día: próximo viernes, hora: sin rellenar |
+| `"Mañana por la tarde"` | "mañana" y "por la tarde" debes especificar hora en formato 24h|
+| `"El 2 de agosto"` | formato "día de mes" en texto no está implementado |
 
 ### Frases que **no** entiende (aún)
 
 | Frase de entrada | Problema |
 |---|---|
-| `"Mañana por la tarde"` | "mañana" y "por la tarde" sin especificar hora no lo entiende |
-| `"El 2 de agosto"` | formato "día de mes" en texto no está implementado |
 | `"En dos semanas"` | expresiones relativas de semanas, no se resuelven excepto que escribas el día específico |
 | `"Next Monday at 3pm"` | solo procesa frases en español |
 | `"Reunión a mediodía"` | horas coloquiales (`mediodía`, `medianoche`) no reconocidas |

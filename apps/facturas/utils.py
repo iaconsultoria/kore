@@ -63,14 +63,14 @@ def obtener_citas_del_mismo_dia(fecha_emision):
         respuesta = requests.post(
             'http://localhost:8000/calendario/mcp/',
             json={
-                'name': 'listar_citas',
-                'arguments': {'fecha': fecha_str}
+                'tool': 'listar_citas',
+                'params': {'fecha': fecha_str}
             },
             timeout=2
         )
         if respuesta.status_code == 200:
             datos = respuesta.json()
-            return datos.get('resultado', {}).get('citas', [])
+            return datos.get('citas', [])
     except Exception:
         pass  # Fallo silencioso
     return []
