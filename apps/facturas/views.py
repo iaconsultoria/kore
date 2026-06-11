@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from .models import Factura, LineaFactura, CategoriaGasto, SugerenciaCategoria
 from .forms import RevisionFacturaForm
-from .utils import buscar_normativa_por_texto, sugerir_categoria
+from .utils import buscar_normativa_por_texto, sugerir_categoria, obtener_citas_del_mismo_dia
 from django.utils import timezone
 from datetime import timedelta
 from django.views.decorators.http import require_POST
@@ -10,7 +10,34 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
+from django.utils import timezone
+from datetime import timedelta
 
+def rate_limit_mcp(view_func):
+    """Rate limit: 30 llamadas por minuto por token."""
+    def wrapper(request, *args, **kwargs):
+        token_enviado = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token_enviado:
+            token_enviado = 'sin-token'
+
+        cache_key = f"mcp_calls_{token_enviado}"
+        llamadas = cache.get(cache_key, [])
+
+        ahora = timezone.now().timestamp()
+        hace_un_minuto = ahora - 60
+
+        # Limpia llamadas de hace más de 1 minuto
+        llamadas = [t for t in llamadas if t > hace_un_minuto]
+
+        if len(llamadas) >= 30:
+            return JsonResponse({"error": "Demasiadas solicitudes. Límite: 30 por minuto."}, status=429)
+
+        llamadas.append(ahora)
+        cache.set(cache_key, llamadas, 60)
+
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 def revisar_extraccion(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
@@ -28,6 +55,9 @@ def revisar_extraccion(request, pk):
 
     # Buscar fragmentos normativos relevantes
     fragmentos_normativa = buscar_normativa_por_texto(texto_busqueda)
+
+    # Buscar citas del mismo día en calendario
+    citas_coincidentes = obtener_citas_del_mismo_dia(factura.fecha_emision)
 
     if request.method == 'POST':
         form = RevisionFacturaForm(request.POST, request.FILES, instance=factura)
@@ -49,7 +79,8 @@ def revisar_extraccion(request, pk):
     return render(request, 'facturas/revisar_extraccion.html', {
         'form': form,
         'factura': factura,
-        'fragmentos_normativa': fragmentos_normativa
+        'fragmentos_normativa': fragmentos_normativa,
+        'citas_coincidentes': citas_coincidentes
     })
 
 
@@ -146,7 +177,7 @@ def sugerir_categoria_view(request, pk):
         """
         return HttpResponse(html)
     except Exception as e:
-        return HttpResponse(f"<p>Error al sugerir: {str(e)}</p>")
+        return HttpResponse(f"<p>Error al sugerir categoría. Intenta de nuevo más tarde.</p>")
 
 @require_POST
 def aceptar_sugerencia_view(request, pk):
@@ -231,13 +262,23 @@ def validar_parametros(tool_name, arguments):
 
     return errores
 
+@rate_limit_mcp
 @csrf_exempt
 @require_http_methods(["POST"])
 def mcp_endpoint(request):
     """Endpoint MCP que maneja llamadas a herramientas."""
+    # Validar token
+    from django.conf import settings
+    import os
+
+    token_esperado = os.getenv('FACTURAS_MCP_TOKEN')
+    token_enviado = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token_esperado or token_enviado != token_esperado:
+        return JsonResponse({"error": "No autorizado"}, status=401)
+
     try:
         body = json.loads(request.body)
-
         tool_name = body.get("name")
         arguments = body.get("arguments", {})
 
@@ -366,4 +407,4 @@ def mcp_endpoint(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "JSON inválido"}, status=400)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse({"error": "Error interno del servidor. Contacta con soporte."}, status=500)

@@ -51,6 +51,19 @@
         </div>
         {% endif %}
 
+    <!-- Citas coincidentes del calendario -->
+        {% if citas_coincidentes %}
+        <div style="background-color: #d4edda; padding: 15px; margin-top: 10px; border-left: 4px solid #28a745;">
+            <h3>Citas en el calendario para este día</h3>
+            {% for cita in citas_coincidentes %}
+            <div style="margin-bottom: 10px;">
+                <strong>{{ cita.titulo }}</strong>
+                {% if cita.hora_inicio %}<span> - {{ cita.hora_inicio }}{% if cita.hora_fin %} a {{ cita.hora_fin }}{% endif %}</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <p>{{ form.base_imponible.label_tag }}{{ form.base_imponible }}</p>
         <p>{{ form.iva_total.label_tag }}{{ form.iva_total }}</p>
         <p>{{ form.total.label_tag }}{{ form.total }}</p>
