@@ -23,6 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+MCP_SECRET_TOKEN = config("MCP_SECRET_TOKEN", default="dev-token-inseguro")
 # SECURITY WARNING: don't run with debug turned on in production!
 OPENROUTER_API_KEY = config('OPENROUTER_API_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)

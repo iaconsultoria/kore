@@ -5,7 +5,8 @@ FECHA = "2026-06-16"
 
 
 def llamar(herramienta, fecha):
-    response = requests.post(BASE, json={"tool": herramienta, "params": {"fecha": fecha}})
+    response = requests.post(BASE, json={"tool": herramienta, "params": {"fecha": fecha}},
+     headers={"X-MCP-Token": "dev-token-inseguro"},                        )
     return response.json()
 
 

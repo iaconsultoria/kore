@@ -196,7 +196,7 @@ def transcribir(request):
         if not texto:
             return JsonResponse(
                 {"error": "No se ha entendido el audio, inténtalo de nuevo."},
-                status=200,
+                status=400,
             )
  
         return JsonResponse({"texto": texto})
@@ -204,7 +204,7 @@ def transcribir(request):
     except Exception as e:
         return JsonResponse(
             {"error": "No se ha entendido el audio, inténtalo de nuevo."},
-            status=200,
+            status=400,
         )
  
     finally:
@@ -223,16 +223,52 @@ def mcp(request):
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    body = json.loads(request.body)
+    # Verificar token secreto
+    token = request.headers.get("X-MCP-Token")
+    if token != settings.MCP_SECRET_TOKEN:
+        return HttpResponse(
+            json.dumps({"error": "No autorizado"}),
+            content_type="application/json",
+            status=403,
+        )
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponse(
+            json.dumps({"error": "Cuerpo JSON inválido"}),
+            content_type="application/json",
+            status=400,
+        )
+
     herramienta = body.get("tool")
     params = body.get("params", {})
+    fecha = params.get("fecha")
+
+    if not fecha:
+        return HttpResponse(
+            json.dumps({"error": "El parámetro 'fecha' es obligatorio"}),
+            content_type="application/json",
+            status=400,
+        )
+
+    try:
+        date.fromisoformat(fecha)
+    except ValueError:
+        return HttpResponse(
+            json.dumps({"error": f"Formato de fecha inválido: '{fecha}'. Usa YYYY-MM-DD"}),
+            content_type="application/json",
+            status=400,
+        )
 
     if herramienta == "listar_citas":
-        resultado = listar_citas(params.get("fecha"))
+        resultado = listar_citas(fecha)
     elif herramienta == "detectar_sobrecarga":
-        resultado = detectar_sobrecarga(params.get("fecha"))
+        resultado = detectar_sobrecarga(fecha)
     elif herramienta == "resumen_dia":
-        resultado = resumen_dia(params.get("fecha"))
+        resultado = resumen_dia(fecha)
     else:
         return HttpResponse(
             json.dumps({"error": f"Herramienta '{herramienta}' no encontrada"}),
