@@ -1,15 +1,20 @@
 from django.shortcuts import get_object_or_404, render
-from django.http import HttpResponse
-from django.views.decorators.http import require_http_methods
-from datetime import date, datetime
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.csrf import csrf_exempt
+from datetime import date, datetime, timedelta
 from .models import Cita, Categoria
 from .forms import CitaForm
 from django.conf import settings
 from litellm import completion
-from .models import Cita
-from .forms import CitaForm
 from .ia.analizador import analizar_dia
+from .ia.parser_voz import parsear_texto_a_cita
+from .mcp.mcp_server import listar_citas, detectar_sobrecarga, resumen_dia
 import requests
+import json
+import os
+import tempfile
+from faster_whisper import WhisperModel
 
 
 def cita_list(request):
@@ -18,15 +23,12 @@ def cita_list(request):
     aviso_facturas = None
     try:
         response = requests.post(
-            "http://127.0.0.1:8000/facturas/mcp/",
-            json={
-                "name": "resumen_fiscal",
-                "arguments": {
-                    "mes": date.today().month,
-                    "anio": date.today().year,
-                }
-            },
-            timeout=2,
+            response = requests.post(
+        "http://127.0.0.1:8000/facturas/mcp/",
+        json={...},
+        headers={"Authorization": f"Bearer {settings.FACTURAS_MCP_TOKEN}"},
+        timeout=2,
+)
         )
         if response.status_code == 200:
             data = response.json().get("resultado", {})
@@ -41,8 +43,10 @@ def cita_list(request):
         "today": date.today().isoformat(),
     })
 
+
 def cita_boton(request):
     return render(request, "calendario/partials/cita_boton.html")
+
 
 def cita_create(request):
     form = CitaForm(request.POST or None)
@@ -59,10 +63,6 @@ def cita_create(request):
             return response
     return render(request, "calendario/partials/cita_form.html", {"form": form})
 
-from django.views.decorators.http import require_POST
-from django.shortcuts import render
-from .forms import CitaForm
-from .ia.parser_voz import parsear_texto_a_cita
 
 @require_POST
 def cita_desde_texto(request):
@@ -86,6 +86,7 @@ def cita_desde_texto(request):
         "form": form
     })
 
+
 def cita_edit(request, pk):
     cita = get_object_or_404(Cita, pk=pk)
     form = CitaForm(request.POST or None, instance=cita)
@@ -104,49 +105,49 @@ def cita_edit(request, pk):
             return response
     return render(request, "calendario/partials/cita_form.html", {"form": form, "cita": cita})
 
+
 @require_http_methods(["DELETE"])
 def cita_delete(request, pk):
     cita = get_object_or_404(Cita, pk=pk)
     cita.delete()
-    return HttpResponse("")  # HTMX swap vacío elimina el elemento del DOM
+    return HttpResponse("")
+
 
 def sugerir_reprogramacion(request, fecha_str):
     fecha = date.fromisoformat(fecha_str)
     analisis = analizar_dia(fecha)
- 
+
     if not analisis["sobrecargado"]:
         return render(request, "calendario/sugerencia.html", {
             "fecha": fecha,
             "equilibrado": True,
         })
- 
-    # Construir lista de citas para el prompt
+
     lista_citas = "\n".join([
         f"- {c['titulo']} ({c['hora_inicio'] or 'sin hora'}–{c['hora_fin'] or 'sin hora'})"
         for c in analisis["citas"]
     ])
- 
+
     prompt = (
         f"El usuario tiene estas citas el día {fecha}:\n{lista_citas}\n"
         f"El día está sobrecargado. Sugiere en una frase corta cuál moverías "
         f"y a qué momento del día siguiente. Responde solo con la sugerencia, sin explicaciones."
     )
- 
+
     response = completion(
         model="openrouter/z-ai/glm-4.5-air:free",
         messages=[{"role": "user", "content": prompt}],
         api_key=settings.OPENROUTER_API_KEY,
     )
     sugerencia = response.choices[0].message.content.strip()
- 
-    # Buscar la cita mencionada en la sugerencia para el botón Aceptar
+
     citas_del_dia = Cita.objects.filter(inicio=fecha)
     cita_sugerida = None
     for cita in citas_del_dia:
         if cita.titulo.lower() in sugerencia.lower():
             cita_sugerida = cita
             break
- 
+
     return render(request, "calendario/sugerencia.html", {
         "fecha": fecha,
         "equilibrado": False,
@@ -154,112 +155,85 @@ def sugerir_reprogramacion(request, fecha_str):
         "sugerencia": sugerencia,
         "cita_sugerida": cita_sugerida,
     })
- 
- 
+
+
 def aceptar_reprogramacion(request, pk):
     cita = get_object_or_404(Cita, pk=pk)
-    # Mover al día siguiente manteniendo la hora
-    from datetime import timedelta
     cita.inicio = cita.inicio + timedelta(days=1)
-    cita.fin    = cita.fin + timedelta(days=1)
+    cita.fin = cita.fin + timedelta(days=1)
     cita.save()
     return HttpResponse("")
 
-from django.http import HttpResponse, JsonResponse
-import json
-import os
-import tempfile
-from faster_whisper import WhisperModel
+
 def transcribir(request):
     if request.method != "POST":
         return HttpResponse(status=405)
- 
+
     audio = request.FILES.get("audio")
     if not audio:
         return JsonResponse(
             {"error": "No se ha recibido audio, inténtalo de nuevo."},
             status=400,
         )
- 
-    # Guardar el audio en un archivo temporal
+
     with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
         for chunk in audio.chunks():
             tmp.write(chunk)
         tmp_path = tmp.name
- 
+
     try:
-        # Transcribir con faster-whisper
         model = WhisperModel("small", device="cpu", compute_type="int8")
         segments, _ = model.transcribe(tmp_path, language="es")
         texto = " ".join([s.text.strip() for s in segments]).strip()
- 
+
         if not texto:
             return JsonResponse(
                 {"error": "No se ha entendido el audio, inténtalo de nuevo."},
                 status=400,
             )
- 
+
         return JsonResponse({"texto": texto})
- 
-    except Exception as e:
+
+    except Exception:
         return JsonResponse(
             {"error": "No se ha entendido el audio, inténtalo de nuevo."},
             status=400,
         )
- 
+
     finally:
         try:
             os.remove(tmp_path)
         except OSError:
             pass
 
-        import json
-        
-from .mcp.mcp_server import listar_citas, detectar_sobrecarga, resumen_dia
-from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def mcp(request):
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    # Verificar token secreto
-    token = request.headers.get("X-MCP-Token")
-    if token != settings.MCP_SECRET_TOKEN:
-        return HttpResponse(
-            json.dumps({"error": "No autorizado"}),
-            content_type="application/json",
-            status=403,
-        )
-    if request.method != "POST":
-        return HttpResponse(status=405)
+    # Verificar token Bearer
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {settings.MCP_SECRET_TOKEN}":
+        return JsonResponse({"error": "No autorizado"}, status=403)
 
     try:
         body = json.loads(request.body)
     except json.JSONDecodeError:
-        return HttpResponse(
-            json.dumps({"error": "Cuerpo JSON inválido"}),
-            content_type="application/json",
-            status=400,
-        )
+        return JsonResponse({"error": "Cuerpo JSON inválido"}, status=400)
 
     herramienta = body.get("tool")
     params = body.get("params", {})
     fecha = params.get("fecha")
 
     if not fecha:
-        return HttpResponse(
-            json.dumps({"error": "El parámetro 'fecha' es obligatorio"}),
-            content_type="application/json",
-            status=400,
-        )
+        return JsonResponse({"error": "El parámetro 'fecha' es obligatorio"}, status=400)
 
     try:
         date.fromisoformat(fecha)
     except ValueError:
-        return HttpResponse(
-            json.dumps({"error": f"Formato de fecha inválido: '{fecha}'. Usa YYYY-MM-DD"}),
-            content_type="application/json",
+        return JsonResponse(
+            {"error": f"Formato de fecha inválido: '{fecha}'. Usa YYYY-MM-DD"},
             status=400,
         )
 
@@ -270,14 +244,9 @@ def mcp(request):
     elif herramienta == "resumen_dia":
         resultado = resumen_dia(fecha)
     else:
-        return HttpResponse(
-            json.dumps({"error": f"Herramienta '{herramienta}' no encontrada"}),
-            content_type="application/json",
+        return JsonResponse(
+            {"error": f"Herramienta '{herramienta}' no encontrada"},
             status=404,
         )
 
-    return HttpResponse(
-        json.dumps(resultado),
-        content_type="application/json",
-    )
-
+    return JsonResponse(resultado)
