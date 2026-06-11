@@ -2,41 +2,80 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard fiscal — Kore</title>
+    <title>Dashboard fiscal – Kore</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; }
         h1 { color: #333; }
-        .seccion { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-left: 4px solid #007bff; }
-        .seccion h2 { color: #007bff; }
-        .iva-mes { font-size: 28px; font-weight: bold; color: #28a745; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
-        th { background-color: #f5f5f5; }
-        tr:hover { background-color: #f0f0f0; }
-        .sin-clasificar { background-color: #fff3cd; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .card h3 { margin: 0 0 8px; font-size: 13px; color: #888; text-transform: uppercase; }
+        .card .valor { font-size: 28px; font-weight: bold; color: #333; }
+        .card .variacion { font-size: 13px; margin-top: 6px; }
+        .up { color: #dc3545; }
+        .down { color: #28a745; }
+        .warn { color: #e67e22; font-weight: bold; }
+        .seccion { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 24px; }
+        .seccion h2 { color: #007bff; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-size: 13px; color: #555; }
+        tr:last-child td { border-bottom: none; }
+        .chart-wrap { max-width: 480px; margin: 0 auto; }
         a { color: #007bff; text-decoration: none; }
         a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h1>Dashboard fiscal</h1>
+    <h1>Dashboard fiscal — {{ mes_actual }}/{{ anio_actual }}</h1>
 
-    <!-- IVA soportado del mes -->
-    <div class="seccion">
-        <h2>IVA soportado del mes</h2>
-        <p class="iva-mes">{{ iva_mes|floatformat:2 }} €</p>
+<a href="{% url 'exportar_dashboard_pdf' %}" style="display:inline-block;margin-bottom:20px;padding:10px 20px;background:#dc3545;color:#fff;border-radius:6px;font-weight:bold;text-decoration:none;">⬇ Exportar PDF</a>
+
+    <!-- Tarjetas resumen -->
+    <div class="grid">
+        <div class="card">
+            <h3>IVA soportado (mes)</h3>
+            <div class="valor">{{ iva_mes|floatformat:2 }} €</div>
+        </div>
+        <div class="card">
+            <h3>Gasto total (mes actual)</h3>
+            <div class="valor">{{ total_mes_actual|floatformat:2 }} €</div>
+            {% if total_mes_anterior %}
+                {% if total_mes_actual > total_mes_anterior %}
+                    <div class="variacion up">▲ más que el mes anterior ({{ total_mes_anterior|floatformat:2 }} €)</div>
+                {% else %}
+                    <div class="variacion down">▼ menos que el mes anterior ({{ total_mes_anterior|floatformat:2 }} €)</div>
+                {% endif %}
+            {% endif %}
+        </div>
+        <div class="card">
+            <h3>Sin clasificar</h3>
+            <div class="valor {% if sin_clasificar %}warn{% endif %}">{{ sin_clasificar }}</div>
+            {% if sin_clasificar %}
+                <div class="variacion">⚠ Facturas pendientes de categoría</div>
+            {% else %}
+                <div class="variacion down">✔ Todo clasificado</div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Gastos por categoría -->
+    <!-- Gráfico -->
+    {% if categorias_nombres %}
+    <div class="seccion">
+        <h2>Distribución por categoría</h2>
+        <div class="chart-wrap">
+            <canvas id="graficoCategorias"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de gastos -->
     <div class="seccion">
         <h2>Gastos por categoría</h2>
         {% if gastos_por_categoria %}
         <table>
             <thead>
-                <tr>
-                    <th>Categoría</th>
-                    <th>Total base imponible</th>
-                </tr>
+                <tr><th>Categoría</th><th>Total base imponible</th></tr>
             </thead>
             <tbody>
                 {% for gasto in gastos_por_categoria %}
@@ -48,37 +87,39 @@
             </tbody>
         </table>
         {% else %}
-        <p>No hay gastos clasificados.</p>
+        <p>No hay gastos clasificados este mes.</p>
         {% endif %}
     </div>
 
-    <!-- Facturas sin clasificar -->
-    <div class="seccion">
-        <h2>Facturas sin clasificar</h2>
-        {% if sin_clasificar %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Número de factura</th>
-                    <th>Proveedor</th>
-                    <th>Total</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for factura in sin_clasificar %}
-                <tr class="sin-clasificar">
-                    <td>{{ factura.numero_factura }}</td>
-                    <td>{{ factura.proveedor.nombre }}</td>
-                    <td>{{ factura.total }} €</td>
-                    <td><a href="{% url 'revisar_extraccion' factura.pk %}">Clasificar</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>Todas las facturas están clasificadas.</p>
+    <script>
+        {% if categorias_nombres %}
+        const ctx = document.getElementById('graficoCategorias').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ categorias_nombres|safe }},
+                datasets: [{
+                    data: {{ categorias_totales|safe }},
+                    backgroundColor: [
+                        '#4e79a7','#f28e2b','#e15759','#76b7b2',
+                        '#59a14f','#edc948','#b07aa1','#ff9da7'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)} €`
+                        }
+                    }
+                }
+            }
+        });
         {% endif %}
-    </div>
+    </script>
 </body>
 </html>
