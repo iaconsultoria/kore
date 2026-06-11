@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from .models import Factura, LineaFactura, CategoriaGasto, SugerenciaCategoria
 from .forms import RevisionFacturaForm
-from .utils import buscar_normativa_por_texto, sugerir_categoria
+from .utils import buscar_normativa_por_texto, sugerir_categoria, obtener_citas_del_mismo_dia
 from django.utils import timezone
 from datetime import timedelta
 from django.views.decorators.http import require_POST
@@ -29,6 +29,9 @@ def revisar_extraccion(request, pk):
     # Buscar fragmentos normativos relevantes
     fragmentos_normativa = buscar_normativa_por_texto(texto_busqueda)
 
+    # Buscar citas del mismo día en calendario
+    citas_coincidentes = obtener_citas_del_mismo_dia(factura.fecha_emision)
+
     if request.method == 'POST':
         form = RevisionFacturaForm(request.POST, request.FILES, instance=factura)
         if form.is_valid():
@@ -49,7 +52,8 @@ def revisar_extraccion(request, pk):
     return render(request, 'facturas/revisar_extraccion.html', {
         'form': form,
         'factura': factura,
-        'fragmentos_normativa': fragmentos_normativa
+        'fragmentos_normativa': fragmentos_normativa,
+        'citas_coincidentes': citas_coincidentes
     })
 
 
