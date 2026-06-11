@@ -124,33 +124,71 @@ def lista_facturas(request):
 
 def dashboard_fiscal(request):
     from django.db.models import Sum
+    from datetime import date
 
     hoy = timezone.now().date()
 
-    # IVA soportado del mes
+    # Mes actual
+    mes_actual = hoy.month
+    anio_actual = hoy.year
+
+    # Mes anterior
+    if mes_actual == 1:
+        mes_anterior = 12
+        anio_anterior = anio_actual - 1
+    else:
+        mes_anterior = mes_actual - 1
+        anio_anterior = anio_actual
+
+    # IVA soportado mes actual
     lineas_mes = LineaFactura.objects.filter(
-        factura__fecha_emision__month=hoy.month,
-        factura__fecha_emision__year=hoy.year
+        factura__fecha_emision__month=mes_actual,
+        factura__fecha_emision__year=anio_actual
     )
     iva_mes = sum(
         (linea.precio_unitario * linea.cantidad * linea.iva_porcentaje / 100)
         for linea in lineas_mes
     )
 
-    # Gastos por categoría
+    # Gastos por categoría mes actual
     gastos_por_categoria = Factura.objects.filter(
-        categoria__isnull=False
+        categoria__isnull=False,
+        fecha_emision__month=mes_actual,
+        fecha_emision__year=anio_actual
     ).values('categoria__nombre').annotate(
         total=Sum('base_imponible')
     ).order_by('-total')
 
+    # Total gasto mes actual
+    total_mes_actual = sum(cat['total'] for cat in gastos_por_categoria) or 0
+
+    # Total gasto mes anterior
+    total_mes_anterior = Factura.objects.filter(
+        fecha_emision__month=mes_anterior,
+        fecha_emision__year=anio_anterior
+    ).aggregate(total=Sum('base_imponible'))['total'] or 0
+
     # Facturas sin clasificar
-    sin_clasificar = Factura.objects.filter(categoria__isnull=True)
+    sin_clasificar = Factura.objects.filter(
+        categoria__isnull=True,
+        fecha_emision__month=mes_actual,
+        fecha_emision__year=anio_actual
+    ).count()
+
+    # Datos para gráfico (nombres y totales)
+    categorias_nombres = [cat['categoria__nombre'] for cat in gastos_por_categoria]
+    categorias_totales = [float(cat['total']) for cat in gastos_por_categoria]
 
     return render(request, 'facturas/dashboard_fiscal.html', {
         'iva_mes': iva_mes,
         'gastos_por_categoria': gastos_por_categoria,
-        'sin_clasificar': sin_clasificar
+        'sin_clasificar': sin_clasificar,
+        'total_mes_actual': total_mes_actual,
+        'total_mes_anterior': total_mes_anterior,
+        'categorias_nombres': categorias_nombres,
+        'categorias_totales': categorias_totales,
+        'mes_actual': mes_actual,
+        'anio_actual': anio_actual,
     })
 
 
@@ -408,3 +446,116 @@ def mcp_endpoint(request):
         return JsonResponse({"error": "JSON inválido"}, status=400)
     except Exception as e:
         return JsonResponse({"error": "Error interno del servidor. Contacta con soporte."}, status=500)
+
+
+def exportar_dashboard_pdf(request):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    from django.db.models import Sum
+    from datetime import date
+    import io
+
+    hoy = timezone.now().date()
+    mes_actual = hoy.month
+    anio_actual = hoy.year
+
+    if mes_actual == 1:
+        mes_anterior = 12
+        anio_anterior = anio_actual - 1
+    else:
+        mes_anterior = mes_actual - 1
+        anio_anterior = anio_actual
+
+    # Datos
+    lineas_mes = LineaFactura.objects.filter(
+        factura__fecha_emision__month=mes_actual,
+        factura__fecha_emision__year=anio_actual
+    )
+    iva_mes = sum(
+        linea.precio_unitario * linea.cantidad * linea.iva_porcentaje / 100
+        for linea in lineas_mes
+    )
+
+    gastos_por_categoria = Factura.objects.filter(
+        categoria__isnull=False,
+        fecha_emision__month=mes_actual,
+        fecha_emision__year=anio_actual
+    ).values('categoria__nombre').annotate(
+        total=Sum('base_imponible')
+    ).order_by('-total')
+
+    total_mes_actual = sum(cat['total'] for cat in gastos_por_categoria) or 0
+
+    total_mes_anterior = Factura.objects.filter(
+        fecha_emision__month=mes_anterior,
+        fecha_emision__year=anio_anterior
+    ).aggregate(total=Sum('base_imponible'))['total'] or 0
+
+    sin_clasificar = Factura.objects.filter(
+        categoria__isnull=True,
+        fecha_emision__month=mes_actual,
+        fecha_emision__year=anio_actual
+    ).count()
+
+    # PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("Resumen Fiscal Mensual — Kore", styles['Title']))
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph(f"Fecha de generación: {hoy.strftime('%d/%m/%Y')}", styles['Normal']))
+    elements.append(Paragraph(f"Período: {mes_actual}/{anio_actual}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    elements.append(Paragraph("Totales", styles['Heading2']))
+    elements.append(Spacer(1, 8))
+
+    resumen = [
+        ['Concepto', 'Importe'],
+        ['IVA soportado (mes)', f"{iva_mes:.2f} €"],
+        ['Gasto total mes actual', f"{total_mes_actual:.2f} €"],
+        ['Gasto total mes anterior', f"{total_mes_anterior:.2f} €"],
+        ['Facturas sin clasificar', str(sin_clasificar)],
+    ]
+    t = Table(resumen, colWidths=[300, 150])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('PADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 24))
+
+    elements.append(Paragraph("Gastos por categoría", styles['Heading2']))
+    elements.append(Spacer(1, 8))
+
+    if gastos_por_categoria:
+        datos_cat = [['Categoría', 'Base imponible']]
+        for g in gastos_por_categoria:
+            datos_cat.append([g['categoria__nombre'], f"{g['total']:.2f} €"])
+        tc = Table(datos_cat, colWidths=[300, 150])
+        tc.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#28a745')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 8),
+        ]))
+        elements.append(tc)
+    else:
+        elements.append(Paragraph("No hay gastos clasificados este mes.", styles['Normal']))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    return HttpResponse(buffer, content_type='application/pdf', headers={
+        'Content-Disposition': f'attachment; filename="dashboard_fiscal_{mes_actual}_{anio_actual}.pdf"'
+    })

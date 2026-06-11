@@ -12,4 +12,5 @@ urlpatterns = [
     path('revisar/<int:pk>/aceptar-sugerencia/', views.aceptar_sugerencia_view, name='aceptar_sugerencia'),
     path('revisar/<int:pk>/ignorar-sugerencia/', views.ignorar_sugerencia_view, name='ignorar_sugerencia'),
     path('mcp/', mcp_endpoint, name='mcp_endpoint'),
+    path('dashboard-fiscal/exportar-pdf/', views.exportar_dashboard_pdf, name='exportar_dashboard_pdf'),
 ]
