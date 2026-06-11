@@ -26,6 +26,10 @@
     .btn-ghost:hover { background: #f1f5f9; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     th { background: #f1f5f9; text-align: left; padding: .65rem 1rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+    th[data-col] { cursor: pointer; user-select: none; }
+    th[data-col]:hover { background: #e2e8f0; }
+    th[data-col].sorted-asc::after  { content: " ▲"; font-size: .7rem; }
+    th[data-col].sorted-desc::after { content: " ▼"; font-size: .7rem; }
     td { padding: .7rem 1rem; border-top: 1px solid #f1f5f9; font-size: .9rem; vertical-align: middle; }
     .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     #form-container { margin-bottom: 1.5rem; }
@@ -52,7 +56,7 @@
   <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:.75rem 1rem;font-size:.875rem;color:#92400e;margin-bottom:1rem">
     🧾 {{ aviso_facturas }}
   </div>
-{% endif %}
+  {% endif %}
   <a href="{% url 'calendario:sugerir_reprogramacion' today %}" class="btn" style="background:#5e8cf1;">
     📊 Analizar agenda
   </a>
@@ -70,13 +74,12 @@
              name="texto"
              placeholder="Describe tu cita..." />
       <div style="display:flex;gap:.5rem;margin-top:.5rem">
-        <button type="submit" class="btn">Describe tu cita...</button>
+        <button type="submit" class="btn">Enviar</button>
         <button type="button" id="btn-hablar" class="btn btn-ghost" onclick="toggleGrabacion()">
           🎙️ Hablar
         </button>
       </div>
-      <p id="aviso-voz" style="display:none;font-size:.8rem;color:#dc2626;margin-top:.3rem">
-        Tu navegador no soporta entrada de voz — usa el campo de texto.
+      <p id="aviso-voz" style="display:none;font-size:.8rem;color:#dc2626;background:#fef2f2;border:0.5px solid #fca5a5;border-radius:6px;padding:6px 10px;margin-top:.3rem">
       </p>
     </form>
 
@@ -92,15 +95,15 @@
     </div>
   </div>
 
-  <table>
+  <table id="tabla-citas">
     <thead>
       <tr>
         <th>Título</th>
-        <th>Inicio</th>
-        <th>Fin</th>
-        <th>Hora</th>
+        <th data-col="1" data-type="date">Inicio</th>
+        <th data-col="2" data-type="date">Fin</th>
+        <th data-col="3" data-type="time">Hora</th>
         <th>Categoría</th>
-        <th>Prioridad</th>
+        <th data-col="5" data-type="num">Prioridad</th>
         <th>Anotaciones</th>
         <th>Acciones</th>
       </tr>
@@ -122,6 +125,51 @@
   </div>
 
 <script>
+// ── Ordenado de columnas ──────────────────────────────────────────────────
+let sortState = { col: null, asc: true };
+
+document.querySelectorAll("th[data-col]").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = parseInt(th.dataset.col);
+    const type = th.dataset.type;
+
+    if (sortState.col === col) {
+      sortState.asc = !sortState.asc;
+    } else {
+      sortState.col = col;
+      sortState.asc = true;
+    }
+
+    // Limpiar indicadores
+    document.querySelectorAll("th[data-col]").forEach(t => {
+      t.classList.remove("sorted-asc", "sorted-desc");
+    });
+    th.classList.add(sortState.asc ? "sorted-asc" : "sorted-desc");
+
+    const tbody = document.getElementById("cita-list");
+    const filas = Array.from(tbody.querySelectorAll("tr[id^='cita-']"));
+
+    filas.sort((a, b) => {
+      const aVal = a.cells[col]?.innerText.trim() || "";
+      const bVal = b.cells[col]?.innerText.trim() || "";
+
+      let cmp = 0;
+      if (type === "num") {
+        // Prioridad: Alta=3, Media=2, Baja=1
+        const orden = { "Alta": 3, "Media": 2, "Baja": 1 };
+        cmp = (orden[aVal] || 0) - (orden[bVal] || 0);
+      } else {
+        cmp = aVal.localeCompare(bVal, "es");
+      }
+
+      return sortState.asc ? cmp : -cmp;
+    });
+
+    filas.forEach(f => tbody.appendChild(f));
+  });
+});
+
+// ── Grabación de voz ─────────────────────────────────────────────────────
 let mediaRecorder = null;
 let chunks = [];
 
@@ -145,51 +193,51 @@ async function toggleGrabacion() {
       if (e.data.size > 0) chunks.push(e.data);
     };
 
-mediaRecorder.onstop = async () => {
-  btn.textContent = "⏳ Transcribiendo...";
-  btn.disabled = true;
-  stream.getTracks().forEach(t => t.stop());
+    mediaRecorder.onstop = async () => {
+      btn.textContent = "⏳ Transcribiendo...";
+      btn.disabled = true;
+      void btn.offsetHeight;
+      stream.getTracks().forEach(t => t.stop());
 
-  await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r => requestAnimationFrame(r));
 
-  const fetchPromise = fetch("/calendario/transcribir/", {
-    method: "POST",
-    body: (() => {
-      const blob = new Blob(chunks, { type: "audio/webm" });
-      const formData = new FormData();
-      formData.append("audio", blob, "audio.webm");
-      formData.append(
-        "csrfmiddlewaretoken",
-        document.querySelector("[name=csrfmiddlewaretoken]").value
-      );
-      return formData;
-    })(),
-  });
+      const fetchPromise = fetch("/calendario/transcribir/", {
+        method: "POST",
+        body: (() => {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", blob, "audio.webm");
+          formData.append(
+            "csrfmiddlewaretoken",
+            document.querySelector("[name=csrfmiddlewaretoken]").value
+          );
+          return formData;
+        })(),
+      });
 
-  // Mínimo 1 segundo visible para que el usuario lo vea
-  const [response] = await Promise.all([
-    fetchPromise,
-    new Promise(r => setTimeout(r, 1000)),
-  ]);
+      const [response] = await Promise.all([
+        fetchPromise,
+        new Promise(r => setTimeout(r, 1000)),
+      ]);
 
-  try {
-    const data = await response.json();
-    if (data.error) {
-      aviso.textContent = data.error;
-      aviso.style.display = "block";
-    } else if (data.texto) {
-      document.getElementById("id-texto-voz").value = data.texto;
-      document.getElementById("form-voz").requestSubmit();
-    }
-  } catch (err) {
-    aviso.textContent = "Error de red al transcribir, inténtalo de nuevo.";
-    aviso.style.display = "block";
-    console.error("Error transcripción:", err);
-  } finally {
-    btn.textContent = "🎙️ Hablar";
-    btn.disabled = false;
-  }
-};
+      try {
+        const data = await response.json();
+        if (data.error) {
+          aviso.textContent = data.error;
+          aviso.style.display = "block";
+        } else if (data.texto) {
+          document.getElementById("id-texto-voz").value = data.texto;
+          document.getElementById("form-voz").requestSubmit();
+        }
+      } catch (err) {
+        aviso.textContent = "Error de red al transcribir, inténtalo de nuevo.";
+        aviso.style.display = "block";
+        console.error("Error transcripción:", err);
+      } finally {
+        btn.textContent = "🎙️ Hablar";
+        btn.disabled = false;
+      }
+    };
 
     mediaRecorder.start();
     btn.textContent = "⏹️ Parar";
