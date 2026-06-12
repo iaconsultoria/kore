@@ -44,10 +44,94 @@ El parser rellena lo que puede y deja el resto del formulario en blanco para que
 
 ---
 
-## Limitación conocida: entrada de voz
-
-La funcionalidad de entrada de voz depende de la Web Speech API de Google, cuyo endpoint está **bloqueado por las restricciones de red del entorno de desarrollo** actual.
-
-**Síntoma:** el botón de micrófono no responde o lanza un error de red silencioso en el navegador.
-
-**Solución prevista en S4:** migrar el reconocimiento de voz a un servicio dentro del servidor, eliminando la dependencia de los servidores de Google.
+## Qué hace
+ 
+Gestiona citas con soporte de entrada por voz. El flujo principal es:
+ 
+**Voz → transcripción → parser IA → formulario prerrellenado → cita guardada**
+ 
+1. El usuario pulsa "🎙️ Hablar" y graba su cita en voz alta
+2. El audio se envía al servidor donde `faster-whisper` lo transcribe a texto
+3. El texto pasa al parser (`parser_voz.py`) que usa LiteLLM + OpenRouter para extraer los campos de la cita (título, fecha, hora, categoría, anotaciones)
+4. Se muestra un formulario prerrellenado que el usuario puede revisar y confirmar
+5. La cita se guarda en la base de datos
+También incluye:
+- Detección de solapamientos entre citas
+- Análisis de sobrecarga diaria (`analizador.py`)
+- Sugerencia de reprogramación con IA
+- Servidor MCP en `/calendario/mcp/` con tres herramientas: `listar_citas`, `detectar_sobrecarga`, `resumen_dia`
+---
+ 
+## Cómo arrancar de cero
+ 
+### 1. Dependencias
+ 
+```bash
+pip install -r requirements.txt
+```
+ 
+Librerías clave: `django`, `litellm`, `faster-whisper`, `requests`
+ 
+### 2. Variables de entorno
+ 
+Crea un archivo `.env` en la raíz del proyecto con:
+ 
+```dotenv
+SECRET_KEY=una-clave-secreta-larga-y-aleatoria
+DEBUG=True
+DB_NAME=kore_db
+DB_USER=postgres
+DB_PASSWORD=tu_password
+DB_HOST=127.0.0.1
+DB_PORT=5432
+ALLOWED_HOSTS=127.0.0.1
+OPENROUTER_API_KEY=tu_api_key_de_openrouter
+MCP_SECRET_TOKEN=un-token-largo-y-aleatorio
+FACTURAS_MCP_TOKEN=token-de-la-app-facturas
+```
+ 
+**Cómo obtener cada variable:**
+ 
+- `SECRET_KEY` — genera una con `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
+- `OPENROUTER_API_KEY` — crea una cuenta gratuita en [openrouter.ai](https://openrouter.ai) y genera una API key
+- `MCP_SECRET_TOKEN` — genera cualquier string aleatorio largo, por ejemplo: `python -c "import secrets; print(secrets.token_hex(32))"`
+- `FACTURAS_MCP_TOKEN` — Se crea en facturas
+### 3. Base de datos
+ 
+```bash
+python manage.py migrate
+```
+ 
+### 4. Categorías semilla
+ 
+```bash
+python manage.py loaddata apps/calendario/fixtures/categorias.json
+```
+ 
+### 5. Arrancar
+ 
+```bash
+python manage.py runserver
+```
+ 
+Entrar a `http://127.0.0.1:8000/calendario/`
+ 
+---
+ 
+## Estado actual
+ 
+### Funciona
+ 
+- CRUD de citas con validación de solapamientos
+- Entrada por voz con `MediaRecorder` + `faster-whisper` (modelo `small`)
+- Parser de texto libre a JSON con LiteLLM + OpenRouter (`z-ai/glm-4.5-air:free`)
+- Manejo de ambigüedades — el parser pregunta si falta información
+- Detección de sobrecarga diaria (>6h o sin pausa >90 min)
+- Sugerencia de reprogramación con IA
+- Servidor MCP con 3 herramientas protegido por token
+- Tests de robustez para `transcribir` y `mcp`
+### Queda flojo o pendiente
+ 
+- La transcripción de voz no valida el tipo ni el tamaño del archivo — se puede enviar cualquier cosa
+- El parser no limita la longitud del texto antes de mandarlo a OpenRouter
+- La validación de solapamientos recorre todas las citas con hora — puede ser lenta con muchas citas
