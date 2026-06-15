@@ -200,3 +200,12 @@ NO recalcules estas fechas.
     resultado["hora_inicio"] = hora_inicio
 
     return resultado
+
+from apps.calendario.interfaces import ParserVozInterface
+
+
+class ParserVoz(ParserVozInterface):
+    """Implementación concreta del parser usando LiteLLM + OpenRouter."""
+
+    def parsear(self, texto: str) -> dict:
+        return parsear_texto_a_cita(texto)
