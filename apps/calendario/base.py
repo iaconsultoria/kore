@@ -20,9 +20,9 @@ class EventoTemporal(ABC):
 
 
 class EventoConHora(EventoTemporal):
-    """Evento que además tiene hora de inicio y fin."""
+    """Evento que además tiene hora de inicio y fin (esta última es opcional)."""
 
-    def __init__(self, titulo, inicio, fin, hora_inicio: time = None, hora_fin: time = None):
+    def __init__(self, titulo, inicio, fin, hora_inicio: time, hora_fin: time = None):
         super().__init__(titulo, inicio, fin)
         self.hora_inicio = hora_inicio
         self.hora_fin = hora_fin
