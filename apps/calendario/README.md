@@ -135,3 +135,4 @@ Entrar a `http://127.0.0.1:8000/calendario/`
 - La transcripción de voz no valida el tipo ni el tamaño del archivo — se puede enviar cualquier cosa
 - El parser no limita la longitud del texto antes de mandarlo a OpenRouter
 - La validación de solapamientos recorre todas las citas con hora — puede ser lenta con muchas citas
+- EventoConHora es la base prevista para Cita, aún no está implementado

@@ -20,7 +20,9 @@ class EventoTemporal(ABC):
 
 
 class EventoConHora(EventoTemporal):
-    """Evento que además tiene hora de inicio y fin (esta última es opcional)."""
+    """Evento que además tiene hora de inicio y fin (esta última es opcional).
+    NOTA:  Base prevista para Cita
+    """
 
     def __init__(self, titulo, inicio, fin, hora_inicio: time, hora_fin: time = None):
         super().__init__(titulo, inicio, fin)
