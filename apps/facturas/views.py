@@ -252,7 +252,12 @@ def validar_parametros(tool_name, arguments):
     """Valida parámetros según la herramienta."""
     errores = []
 
-    if tool_name == "listar_facturas":
+    if tool_name == "extraer_factura_de_imagen":
+        imagen_base64 = arguments.get("imagen_base64")
+        if not imagen_base64 or not isinstance(imagen_base64, str):
+            errores.append("imagen_base64 debe ser una cadena no vacía")
+
+    elif tool_name == "listar_facturas":
         limit = arguments.get("limit", 10)
         offset = arguments.get("offset", 0)
         if not isinstance(limit, int) or limit < 1 or limit > 100:
@@ -325,7 +330,95 @@ def mcp_endpoint(request):
         if errores:
             return JsonResponse({"error": ", ".join(errores)}, status=400)
 
-        if tool_name == "listar_facturas":
+        if tool_name == "extraer_factura_de_imagen":
+            from apps.facturas.servicios.extractor import ExtractorGoogle
+            from apps.facturas.domain.documentos import Factura as FacturaDomain
+            from apps.facturas.models import Proveedor
+            from decimal import Decimal
+            from datetime import datetime
+            import base64
+
+            imagen_base64 = arguments.get("imagen_base64")
+
+            try:
+                # Decodificar imagen
+                imagen_bytes = base64.b64decode(imagen_base64)
+
+                def _decimal_o_cero(valor):
+                    return Decimal(str(valor)) if valor is not None else Decimal("0")
+
+                # Extraer con OCR
+                extractor = ExtractorGoogle()
+                datos = extractor.extraer(imagen_bytes)
+
+                # Si fallo en OCR
+                if datos.get("extraccion_fallida"):
+                    return JsonResponse({
+                        "error": datos.get("error", "Extracción fallida"),
+                        "extraccion_fallida": True
+                    }, status=400)
+
+                # Instanciar Factura (domain) con líneas
+                lineas = datos.get("lineas", [])
+                factura_domain = FacturaDomain(
+                    numero=datos["numero_factura"],
+                    fecha=datetime.fromisoformat(datos["fecha_emision"]).date(),
+                    total=_decimal_o_cero(datos.get("total")),
+                    lineas=lineas
+                )
+
+                # Validar
+                if not factura_domain.validar():
+                    return JsonResponse({
+                        "error": "Factura no válida",
+                        "factura_dominio": {
+                            "numero": factura_domain.numero,
+                            "total": str(factura_domain.total),
+                            "lineas": factura_domain.obtener_lineas()
+                        }
+                    }, status=400)
+
+                # Guardar en BD
+                proveedor, _ = Proveedor.objects.get_or_create(
+                    nombre=datos.get("nombre_emisor", "Desconocido")
+                )
+
+                factura_orm = Factura.objects.create(
+                    numero_factura=factura_domain.numero,
+                    fecha_emision=factura_domain.fecha,
+                    proveedor=proveedor,
+                    base_imponible=_decimal_o_cero(datos.get("base_imponible")),
+                    iva_total=_decimal_o_cero(datos.get("iva_total")),
+                    total=factura_domain.total
+                )
+
+                # Crear líneas
+                for linea in factura_domain.obtener_lineas():
+                    LineaFactura.objects.create(
+                        factura=factura_orm,
+                        concepto=linea.get("concepto", ""),
+                        cantidad=Decimal(str(linea.get("cantidad", 0))),
+                        precio_unitario=Decimal(str(linea.get("precio_unitario", 0))),
+                        iva_porcentaje=int(linea.get("iva_porcentaje", 21))
+                    )
+
+                return JsonResponse({
+                    "resultado": {
+                        "factura_id": factura_orm.id,
+                        "numero_factura": factura_orm.numero_factura,
+                        "proveedor": factura_orm.proveedor.nombre,
+                        "total": float(factura_orm.total),
+                        "lineas_creadas": len(factura_domain.obtener_lineas()),
+                        "mensaje": "Factura extraída y guardada correctamente"
+                    }
+                })
+
+            except Exception as e:
+                return JsonResponse({
+                    "error": f"Error al extraer factura: {str(e)}"
+                }, status=500)
+
+        elif tool_name == "listar_facturas":
             limit = arguments.get("limit", 10)
             offset = arguments.get("offset", 0)
             facturas = Factura.objects.select_related("proveedor", "categoria").order_by("-fecha_emision")[offset:offset+limit]
