@@ -73,7 +73,7 @@ class ExtractorGoogle(ExtractorOCR):
                 self._confianza_ultima = 0.0
                 return {"extraccion_fallida": True, "error": "respuesta no válida del modelo"}
 
-            campos_obligatorios = ["proveedor", "numero_factura", "fecha_factura"]
+            campos_obligatorios = ["numero_factura", "fecha_emision", "nombre_emisor"]
             if not all(campo in datos for campo in campos_obligatorios):
                 self._confianza_ultima = 0.5
                 return {"extraccion_fallida": True, "error": "campos obligatorios ausentes"}

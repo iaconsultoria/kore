@@ -48,19 +48,21 @@ class Factura(DocumentoFiscal):
         total: Decimal,
         estado: str = "draft",
         iva: Decimal = Decimal("0.00"),
-        retencion: Decimal = Decimal("0.00")
+        retencion: Decimal = Decimal("0.00"),
+        lineas: List[dict] = None
     ):
         super().__init__(numero, fecha, total, estado)
         self.iva = iva
         self.retencion = retencion
+        self.lineas = lineas if lineas is not None else []
 
     def validar(self) -> bool:
         """Factura válida si tiene número y total > 0."""
         return bool(self.numero) and self.total > 0
 
     def obtener_lineas(self) -> List[dict]:
-        """Por ahora retorna lista vacía."""
-        return []
+        """Devuelve las líneas de la factura."""
+        return self.lineas
 
 
 class Ticket(DocumentoFiscal):
