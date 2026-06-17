@@ -3,7 +3,7 @@
 ```mermaid
 erDiagram
     PROVEEDOR ||--o{ FACTURA : "emite"
-    CATEGORIA_GASTO ||--o{ FACTURA : "clasifica"
+    CATEGORIA_GASTO |o--o{ FACTURA : "clasifica"
     FACTURA ||--|{ LINEA_FACTURA : "contiene"
 
     PROVEEDOR {
