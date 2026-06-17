@@ -104,7 +104,7 @@ Sin Kore, un autónomo detecta la sobrecarga cuando ya tiene conflictos de agend
  
 **Gestión de facturas**
 - Extracción automática de datos desde PDF o imagen
-- Alertas de vencimiento — avisa el mes en el que va a a expirar la factura
+- Alertas de vencimiento — avisa el mes en el que va a expirar la factura
 - Dashboard fiscal con resumen de IVA y gastos por categoría
 El impacto más directo es en el tiempo dedicado a tareas administrativas: leer facturas, recordar fechas de vencimiento y clasificar gastos son tareas repetitivas que Kore automatiza parcialmente.
  
@@ -118,7 +118,7 @@ Kore adopta un modelo de **privacidad por diseño**: todos los datos del usuario
 
 - No se recopilan datos de uso de forma remota.
 - Las facturas procesadas por la IA no salen del dispositivo del usuario.
-- Los modelos de IA que operan en local (faster-whisper, GLM-4.5) no envían audio ni texto a servidores propios de Kore.
+- Los modelos de IA que operan en local (faster-whisper) no envían audio ni texto a servidores propios de Kore.
 - Los modelos en nube (OpenRouter) reciben únicamente el texto o imagen necesario para la consulta puntual, sin persistencia en los servidores del proveedor más allá de lo estipulado en sus condiciones de uso.
 
 ### Roles de acceso
