@@ -305,8 +305,8 @@ def validar_parametros(tool_name, arguments):
 
     return errores
 
-@rate_limit_mcp
 @csrf_exempt
+@rate_limit_mcp
 @require_http_methods(["POST"])
 def mcp_endpoint(request):
     """Endpoint MCP que maneja llamadas a herramientas."""
