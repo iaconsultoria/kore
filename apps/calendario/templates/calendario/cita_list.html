@@ -111,8 +111,6 @@
     <tbody id="cita-list">
       {% for cita in citas %}
         {% include "calendario/partials/cita_row.html" %}
-      {% empty %}
-        <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:2rem">Sin citas</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -125,6 +123,26 @@
   </div>
 
 <script>
+// ── Fila vacía ────────────────────────────────────────────────────────────
+function actualizarVacio() {
+  const tbody = document.getElementById("cita-list");
+  const filas = tbody.querySelectorAll("tr[id^='cita-']");
+  let vacio = document.getElementById("fila-vacio");
+  if (filas.length === 0) {
+    if (!vacio) {
+      vacio = document.createElement("tr");
+      vacio.id = "fila-vacio";
+      vacio.innerHTML = '<td colspan="8" style="text-align:center;color:#94a3b8;padding:2rem">Sin citas</td>';
+      tbody.appendChild(vacio);
+    }
+  } else {
+    if (vacio) vacio.remove();
+  }
+}
+
+actualizarVacio();
+document.body.addEventListener("htmx:afterSwap", actualizarVacio);
+
 // ── Ordenado de columnas ──────────────────────────────────────────────────
 let sortState = { col: null, asc: true };
 
@@ -140,7 +158,6 @@ document.querySelectorAll("th[data-col]").forEach(th => {
       sortState.asc = true;
     }
 
-    // Limpiar indicadores
     document.querySelectorAll("th[data-col]").forEach(t => {
       t.classList.remove("sorted-asc", "sorted-desc");
     });
@@ -155,7 +172,6 @@ document.querySelectorAll("th[data-col]").forEach(th => {
 
       let cmp = 0;
       if (type === "num") {
-        // Prioridad: Alta=3, Media=2, Baja=1
         const orden = { "Alta": 3, "Media": 2, "Baja": 1 };
         cmp = (orden[aVal] || 0) - (orden[bVal] || 0);
       } else {
