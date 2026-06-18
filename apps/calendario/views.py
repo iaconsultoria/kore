@@ -17,36 +17,52 @@ import tempfile
 from faster_whisper import WhisperModel
 
 
+from django.middleware.csrf import get_token
+
 def cita_list(request):
     citas = Cita.objects.select_related("categoria").all()
-    today = date.today().isoformat()
+    today = date.today()
     aviso_facturas = None
     try:
-        response = requests.post(
-            response = requests.post(
-        "http://127.0.0.1:8000/facturas/mcp/",
-        json={...},
-        headers={"Authorization": f"Bearer {settings.FACTURAS_MCP_TOKEN}"},
-        timeout=2,
-)
+        csrftoken = get_token(request)
+
+        session = requests.Session()
+        session.cookies.set("csrftoken", csrftoken)
+
+        response = session.post(
+            "http://127.0.0.1:8000/facturas/mcp/",
+            json={
+                "name": "resumen_fiscal",
+                "arguments": {
+                    "mes": today.month,
+                    "anio": today.year,
+                }
+            },
+            headers={
+                "Authorization": f"Bearer {settings.FACTURAS_MCP_TOKEN}",
+                "X-CSRFToken": csrftoken,
+                "Referer": "http://127.0.0.1:8000/",
+            },
+            timeout=2,
         )
+        print("STATUS:", response.status_code)
         if response.status_code == 200:
             data = response.json().get("resultado", {})
             total_facturas = data.get("total_facturas", 0)
             if total_facturas > 0:
                 aviso_facturas = f"Este mes hay {total_facturas} factura{'s' if total_facturas > 1 else ''} registrada{'s' if total_facturas > 1 else ''}."
-    except Exception:
-        pass
+    except Exception as e:
+        print("ERROR FACTURAS MCP:", e)
     return render(request, "calendario/cita_list.html", {
         "citas": citas,
         "aviso_facturas": aviso_facturas,
-        "today": date.today().isoformat(),
+        "today": today.isoformat(),
     })
+
 
 
 def cita_boton(request):
     return render(request, "calendario/partials/cita_boton.html")
-
 
 def cita_create(request):
     form = CitaForm(request.POST or None)
@@ -55,13 +71,15 @@ def cita_create(request):
             cita = form.save()
             response = render(request, "calendario/partials/cita_row.html", {"cita": cita})
             response["HX-Trigger"] = "citaGuardada"
+            response["HX-Retarget"] = "#cita-list"
+            response["HX-Reswap"] = "beforeend"
             return response
         else:
-            response = render(request, "calendario/partials/cita_form.html", {"form": form})
+            response = render(request, "calendario/partials/cita_form.html", {"form": form, "today": date.today().isoformat()})
             response["HX-Retarget"] = "#form-container"
             response["HX-Reswap"] = "innerHTML"
             return response
-    return render(request, "calendario/partials/cita_form.html", {"form": form})
+    return render(request, "calendario/partials/cita_form.html", {"form": form, "today": date.today().isoformat()})
 
 
 @require_POST
